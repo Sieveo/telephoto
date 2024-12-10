@@ -595,7 +595,7 @@ internal class RealZoomableState internal constructor(
   }
 
   @Composable
-  fun RetainPanAcrossImageChangesEffect() {
+  fun RetainPanAcrossContentSizeChangesEffect() {
     LaunchedEffect(this) {
       withContext(Dispatchers.Main.immediate) { // To avoid flickers.
         snapshotFlow { currentGestureStateInputs }
