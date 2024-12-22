@@ -220,7 +220,7 @@ internal class RealZoomableState internal constructor(
   @Suppress("NAME_SHADOWING")
   internal val transformableState = TransformableState { zoomDelta, panDelta, _, centroid ->
     check(panDelta.isSpecifiedAndFinite() && zoomDelta.isFinite() && centroid.isSpecifiedAndFinite()) {
-      "Can't transform with zoomDelta=$zoomDelta, panDelta=$panDelta, centroid=$centroid. ${collectDebugInfoForIssue41()}"
+      "Can't transform with zoomDelta=$zoomDelta, panDelta=$panDelta, centroid=$centroid. ${collectDebugInfo()}"
     }
 
     val lastGestureState = calculateGestureState() ?: return@TransformableState
@@ -230,7 +230,7 @@ internal class RealZoomableState internal constructor(
         userZoom = lastGestureState.userZoom,
       )
       check(oldZoom.finalZoom().isPositiveAndFinite()) {
-        "Old zoom is invalid/infinite. ${collectDebugInfoForIssue41()}"
+        "Old zoom is invalid/infinite. ${collectDebugInfo()}"
       }
 
       val isZoomingOut = zoomDelta < 1f
@@ -260,7 +260,7 @@ internal class RealZoomableState internal constructor(
         }
       }
       check(newZoom.finalZoom().let { it.isPositiveAndFinite() && it.minScale > 0f }) {
-        "New zoom is invalid/infinite = $newZoom. ${collectDebugInfoForIssue41("zoomDelta" to zoomDelta)}"
+        "New zoom is invalid/infinite = $newZoom. ${collectDebugInfo("zoomDelta" to zoomDelta)}"
       }
 
       val oldOffset = ContentOffset(
@@ -294,7 +294,7 @@ internal class RealZoomableState internal constructor(
       userOffset = current.userOffset - panDeltaWithZoom,
     )
     check(targetOffset.isFinite) {
-      "Offset can't be infinite ${collectDebugInfoForIssue41("panDelta" to panDelta)}"
+      "Offset can't be infinite ${collectDebugInfo("panDelta" to panDelta)}"
     }
 
     val targetOffsetWithinBounds = targetOffset.coerceWithinContentBounds(
@@ -318,7 +318,7 @@ internal class RealZoomableState internal constructor(
     newZoom: ContentZoomFactor,
   ): ContentOffset {
     check(this.isFinite) {
-      "Can't center around an infinite offset ${collectDebugInfoForIssue41()}"
+      "Can't center around an infinite offset ${collectDebugInfo()}"
     }
 
     // Copied from androidx samples:
@@ -355,7 +355,7 @@ internal class RealZoomableState internal constructor(
       // ________________|_______________      ________|_________   ________|_________
       ((currentOffset + centroid / oldZoom) - (centroid / newZoom + panDelta / oldZoom)).also {
         check(it.isFinite) {
-          val debugInfo = collectDebugInfoForIssue41(
+          val debugInfo = collectDebugInfo(
             "centroid" to centroid,
             "panDelta" to panDelta,
             "oldZoom" to oldZoom,
@@ -372,7 +372,7 @@ internal class RealZoomableState internal constructor(
     inputs: GestureStateInputs,
   ): ContentOffset {
     check(isFinite) {
-      "Can't coerce an infinite offset ${collectDebugInfoForIssue41("proposedZoom" to proposedZoom)}"
+      "Can't coerce an infinite offset ${collectDebugInfo("proposedZoom" to proposedZoom)}"
     }
 
     val unscaledContentBounds = inputs.unscaledContentBounds
@@ -580,7 +580,7 @@ internal class RealZoomableState internal constructor(
           centroid = gestureState.lastCentroid,
           panChange = (value - previous).also {
             check(it.isFinite) {
-              val debugInfo = collectDebugInfoForIssue41(
+              val debugInfo = collectDebugInfo(
                 "value" to value,
                 "previous" to previous,
                 "velocity" to velocity,
@@ -628,24 +628,19 @@ internal class RealZoomableState internal constructor(
     return currentGestureStateInputs?.let(gestureState::calculate)
   }
 
-  // https://github.com/saket/telephoto/issues/41
-  private fun collectDebugInfoForIssue41(vararg extras: Pair<String, Any>): String {
+  private fun collectDebugInfo(vararg extras: Pair<String, Any>): String {
     return buildString {
       appendLine()
       extras.forEach { (key, value) ->
         appendLine("$key = $value")
       }
-      val gestureStateInputs = currentGestureStateInputs
-      appendLine("gestureStateInputs = $gestureStateInputs")
+      appendLine("gestureStateInputs = $currentGestureStateInputs")
       appendLine("gestureState = ${calculateGestureState()}")
       appendLine("contentTransformation = $contentTransformation")
       appendLine("contentScale = $contentScale")
-      appendLine("contentAlignment = $contentAlignment")
-      appendLine("isReadyToInteract = $isReadyToInteract")
       appendLine("unscaledContentLocation = $unscaledContentLocation")
-      appendLine("unscaledContentBounds = ${gestureStateInputs?.unscaledContentBounds}")
       appendLine("zoomSpec = $zoomSpec")
-      appendLine("Please share this error message to https://github.com/saket/telephoto/issues/41?")
+      appendLine("Please share this error message on https://github.com/saket/telephoto/issues/new?")
     }
   }
 
