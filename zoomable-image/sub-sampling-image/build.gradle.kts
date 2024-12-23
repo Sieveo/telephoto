@@ -9,7 +9,7 @@ plugins {
 }
 
 android {
-  namespace "me.saket.telephoto.subsamplingimage"
+  namespace = "me.saket.telephoto.subsamplingimage"
   buildFeatures {
     buildConfig = true
   }
