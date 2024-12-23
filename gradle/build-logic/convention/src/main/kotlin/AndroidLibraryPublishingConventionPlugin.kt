@@ -25,7 +25,7 @@ class AndroidLibraryPublishingConventionPlugin : Plugin<Project> {
     extensions.configure<MetalavaExtension> {
       filename.set("api/api.txt")
       enforceCheck.set(true)
-      sourcePaths.setFrom("src/main", "src/commonMain") // Exclude tests.
+      sourcePaths.setFrom("src/main", "src/commonMain", "src/androidMain") // Exclude tests.
     }
   }
 }
