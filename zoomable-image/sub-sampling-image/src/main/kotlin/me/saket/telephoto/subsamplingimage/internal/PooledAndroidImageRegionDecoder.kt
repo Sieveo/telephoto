@@ -14,20 +14,12 @@ import me.saket.telephoto.subsamplingimage.SubSamplingImageSource
 import me.saket.telephoto.subsamplingimage.internal.ImageRegionDecoder.DecodeResult
 import me.saket.telephoto.subsamplingimage.internal.ImageRegionDecoder.FactoryParams
 
-internal fun PooledAndroidImageRegionDecoderFactory(
-  imageSource: SubSamplingImageSource,
-  createDecoder: (context: Context) -> BitmapRegionDecoder
-): ImageRegionDecoder.Factory = PooledImageRegionDecoder.Factory(
-  imageSource = imageSource,
-  delegate = AndroidImageRegionDecoder.Factory(imageSource, createDecoder),
-)
-
 /**
  * Maintains a pool of decoders to load multiple bitmap regions in parallel. Without this,
  * a single [BitmapRegionDecoder] can only be used for one region at a time because it
  * synchronizes its APIs internally.
  * */
-internal class PooledImageRegionDecoder private constructor(
+internal class PooledAndroidImageRegionDecoder private constructor(
   override val imageSize: IntSize,
   private val decoders: ResourcePool<ImageRegionDecoder>,
 ) : ImageRegionDecoder {
@@ -48,7 +40,7 @@ internal class PooledImageRegionDecoder private constructor(
 
     fun Factory(
       imageSource: SubSamplingImageSource,
-      delegate: ImageRegionDecoder.Factory
+      createDecoder: (context: Context) -> BitmapRegionDecoder,
     ) = ImageRegionDecoder.Factory { params ->
       val exif = ExifMetadata.read(params.context, imageSource)
       val params = FactoryParams(
@@ -57,13 +49,18 @@ internal class PooledImageRegionDecoder private constructor(
         extras = params.extras.plus(ExifMetadata::class to exif),
       )
 
+      val delegate = AndroidImageRegionDecoder.Factory(
+        imageSource = imageSource,
+        createDecoder = createDecoder,
+      )
+
       val decoders = buildList<ImageRegionDecoder> {
         add(delegate.create(params))
         repeat(calculatePoolCount(params, first().imageSize) - 1) {
           add(delegate.create(params))
         }
       }
-      PooledImageRegionDecoder(
+      PooledAndroidImageRegionDecoder(
         imageSize = decoders.first().imageSize,
         decoders = ResourcePool(decoders),
       )

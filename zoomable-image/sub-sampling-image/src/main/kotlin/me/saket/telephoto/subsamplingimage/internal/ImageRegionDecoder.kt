@@ -1,7 +1,6 @@
 package me.saket.telephoto.subsamplingimage.internal
 
 import android.content.Context
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
@@ -11,9 +10,10 @@ import kotlin.reflect.KClass
 import kotlin.reflect.cast
 
 /**
- * [ImageBitmap] decoder, responsible for loading regions of an image for [SubSamplingImage]'s tiles.
+ * An image decoder, responsible for loading partial regions for
+ * [SubSamplingImage][me.saket.telephoto.subsamplingimage.SubSamplingImage]'s tiles.
  *
- * Also see: [AndroidImageRegionDecoder] and [PooledImageRegionDecoder].
+ * Also see: [AndroidImageRegionDecoder] and [PooledAndroidImageRegionDecoder].
  */
 interface ImageRegionDecoder {
   /** Raw size of the image, without any scaling applied. */

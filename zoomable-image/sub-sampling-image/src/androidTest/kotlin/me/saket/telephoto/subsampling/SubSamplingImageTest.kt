@@ -55,7 +55,7 @@ import me.saket.telephoto.subsamplingimage.SubSamplingImage
 import me.saket.telephoto.subsamplingimage.SubSamplingImageSource
 import me.saket.telephoto.subsamplingimage.SubSamplingImageState
 import me.saket.telephoto.subsamplingimage.internal.ImageRegionDecoder
-import me.saket.telephoto.subsamplingimage.internal.PooledImageRegionDecoder
+import me.saket.telephoto.subsamplingimage.internal.PooledAndroidImageRegionDecoder
 import me.saket.telephoto.subsamplingimage.rememberSubSamplingImageState
 import me.saket.telephoto.subsamplingimage.test.R
 import me.saket.telephoto.util.CiScreenshotValidator
@@ -98,7 +98,7 @@ class SubSamplingImageTest {
 
   @After
   fun tearDown() {
-    PooledImageRegionDecoder.overriddenPoolCount = null
+    PooledAndroidImageRegionDecoder.overriddenPoolCount = null
     LeakAssertions.assertNoLeaks()
   }
 
@@ -243,7 +243,7 @@ class SubSamplingImageTest {
 
   @Test fun draw_base_tile_to_fill_gaps_in_foreground_tiles() {
     // This test blocks 2 decoders indefinitely so at least 3 decoders are needed.
-    PooledImageRegionDecoder.overriddenPoolCount = 3
+    PooledAndroidImageRegionDecoder.overriddenPoolCount = 3
 
     // This fake image decoder will only decode the base tile.
     val imageSource = SubSamplingImageSource.asset("pahade.jpg")
@@ -294,7 +294,7 @@ class SubSamplingImageTest {
 
   @Test fun draw_tile_under_centroid_first() {
     // This test only allows 1 decoder to work so at least 2 decoders are needed.
-    PooledImageRegionDecoder.overriddenPoolCount = 2
+    PooledAndroidImageRegionDecoder.overriddenPoolCount = 2
 
     // This fake decoder will ignore decoding of all but the first tiles.
     val firstNonBaseTileReceived = AtomicBoolean(false)
@@ -630,7 +630,7 @@ class SubSamplingImageTest {
 
   @Test fun do_not_draw_base_tile_after_foreground_tiles_images_are_loaded() {
     // This test blocks 1 decoders so at least 2 decoders are needed.
-    PooledImageRegionDecoder.overriddenPoolCount = 2
+    PooledAndroidImageRegionDecoder.overriddenPoolCount = 2
 
     val mutexForDecodingLastTile = Mutex(locked = true)
     val imageSource = SubSamplingImageSource.asset("pahade.jpg")
@@ -758,7 +758,7 @@ class SubSamplingImageTest {
   }
 
   @Test fun raw_stream_works_with_multiple_decoders() {
-    PooledImageRegionDecoder.overriddenPoolCount = 2
+    PooledAndroidImageRegionDecoder.overriddenPoolCount = 2
 
     rule.setContent {
       val zoomableState = rememberZoomableState()
