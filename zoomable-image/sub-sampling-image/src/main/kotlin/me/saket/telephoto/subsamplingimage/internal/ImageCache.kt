@@ -1,6 +1,5 @@
 package me.saket.telephoto.subsamplingimage.internal
 
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.util.fastForEach
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.toImmutableMap
@@ -55,7 +54,7 @@ internal class ImageCache(
                 check(tile !in it)
                 it + (tile to InFlight(currentCoroutineContext().job))
               }
-              val painter = decoder.decodeRegion(tile)
+              val painter = decoder.decodeRegion(tile.bounds, tile.sampleSize.size)
               cachedImages.update {
                 it + (tile to Loaded(painter))
               }

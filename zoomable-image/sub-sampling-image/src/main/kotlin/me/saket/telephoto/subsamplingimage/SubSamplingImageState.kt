@@ -15,11 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.toSize
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import me.saket.telephoto.subsamplingimage.internal.ExifMetadata
 import me.saket.telephoto.subsamplingimage.internal.ImageRegionDecoder
-import me.saket.telephoto.subsamplingimage.internal.LocalImageRegionDecoderFactory
-import me.saket.telephoto.subsamplingimage.internal.PooledImageRegionDecoder
 import me.saket.telephoto.zoomable.ZoomableContentLocation
 import me.saket.telephoto.zoomable.ZoomableContentTransformation
 import me.saket.telephoto.zoomable.ZoomableState
@@ -108,16 +104,12 @@ private fun createImageRegionDecoder(
   var decoder by remember(imageSource) { mutableStateOf<ImageRegionDecoder?>(null) }
 
   if (!LocalInspectionMode.current) {
-    val localFactory = LocalImageRegionDecoderFactory.current
     LaunchedEffect(imageSource) {
       try {
-        val exif = ExifMetadata.read(context, imageSource)
-        decoder = PooledImageRegionDecoder.Factory(localFactory).create(
+        decoder = imageSource.decoder().create(
           ImageRegionDecoder.FactoryParams(
             context = context,
-            imageSource = imageSource,
             imageOptions = imageOptions,
-            exif = exif,
           )
         )
       } catch (e: IOException) {

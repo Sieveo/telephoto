@@ -11,6 +11,8 @@ import androidx.annotation.DrawableRes
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.graphics.ImageBitmap
+import me.saket.telephoto.subsamplingimage.internal.ImageRegionDecoder
+import me.saket.telephoto.subsamplingimage.internal.PooledAndroidImageRegionDecoderFactory
 import okio.BufferedSource
 import okio.Closeable
 import okio.FileSystem
@@ -31,7 +33,7 @@ import kotlin.LazyThreadSafetyMode.NONE
  * * [SubSamplingImageSource.contentUri]
  * * [SubSamplingImageSource.rawSource]
  */
-sealed interface SubSamplingImageSource : Closeable {
+interface SubSamplingImageSource : Closeable {
   /**
    * A preview that can be displayed immediately while the bitmap tiles
    * are loaded, which can be slightly slow depending on the file size.
@@ -141,7 +143,7 @@ sealed interface SubSamplingImageSource : Closeable {
   /** Peeks into the source without consuming its bytes. */
   fun peek(context: Context): BufferedSource
 
-  suspend fun decoder(context: Context): BitmapRegionDecoder
+  suspend fun decoder(): ImageRegionDecoder.Factory
 
   /** Called when the image is no longer visible. */
   override fun close() = Unit
@@ -161,10 +163,12 @@ internal data class FileImageSource(
     return FileSystem.SYSTEM.source(path).buffer()
   }
 
-  override suspend fun decoder(context: Context): BitmapRegionDecoder {
-    return ParcelFileDescriptor.open(path.toFile(), ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->
-      @Suppress("DEPRECATION")
-      BitmapRegionDecoder.newInstance(fd.fileDescriptor, /* ignored */ false)
+  override suspend fun decoder(): ImageRegionDecoder.Factory {
+    return PooledAndroidImageRegionDecoderFactory(this) {
+      ParcelFileDescriptor.open(path.toFile(), ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->
+        @Suppress("DEPRECATION")
+        BitmapRegionDecoder.newInstance(fd.fileDescriptor, /* ignored */ false)
+      }
     }
   }
 
@@ -183,13 +187,15 @@ internal data class AssetImageSource(
     return inputStream(context).source().buffer()
   }
 
-  override suspend fun decoder(context: Context): BitmapRegionDecoder {
-    return inputStream(context).use { stream ->
-      check(stream is AssetManager.AssetInputStream) {
-        error("BitmapRegionDecoder won't be able to optimize reading of this asset")
+  override suspend fun decoder(): ImageRegionDecoder.Factory {
+    return PooledAndroidImageRegionDecoderFactory(this) { context ->
+      inputStream(context).use { stream ->
+        check(stream is AssetManager.AssetInputStream) {
+          error("BitmapRegionDecoder won't be able to optimize reading of this asset")
+        }
+        @Suppress("DEPRECATION")
+        BitmapRegionDecoder.newInstance(stream, /* ignored */ false)!!
       }
-      @Suppress("DEPRECATION")
-      BitmapRegionDecoder.newInstance(stream, /* ignored */ false)!!
     }
   }
 
@@ -208,10 +214,12 @@ internal data class ResourceImageSource(
     return inputStream(context).source().buffer()
   }
 
-  override suspend fun decoder(context: Context): BitmapRegionDecoder {
-    return inputStream(context).use { stream ->
-      @Suppress("DEPRECATION")
-      BitmapRegionDecoder.newInstance(stream, /* ignored */ false)!!
+  override suspend fun decoder(): ImageRegionDecoder.Factory {
+    return PooledAndroidImageRegionDecoderFactory(this) { context ->
+      inputStream(context).use { stream ->
+        @Suppress("DEPRECATION")
+        BitmapRegionDecoder.newInstance(stream, /* ignored */ false)!!
+      }
     }
   }
 
@@ -231,10 +239,12 @@ internal data class UriImageSource(
     return inputStream(context).source().buffer()
   }
 
-  override suspend fun decoder(context: Context): BitmapRegionDecoder {
-    return inputStream(context).use { stream ->
-      @Suppress("DEPRECATION")
-      BitmapRegionDecoder.newInstance(stream, /* ignored */ false)!!
+  override suspend fun decoder(): ImageRegionDecoder.Factory {
+    return PooledAndroidImageRegionDecoderFactory(this) { context ->
+      inputStream(context).use { stream ->
+        @Suppress("DEPRECATION")
+        BitmapRegionDecoder.newInstance(stream, /* ignored */ false)!!
+      }
     }
   }
 
@@ -258,13 +268,15 @@ internal data class RawImageSource(
     return bufferedSource.peek()
   }
 
-  override suspend fun decoder(context: Context): BitmapRegionDecoder {
+  override suspend fun decoder(): ImageRegionDecoder.Factory {
     // This uses a peeking source because the image source can be decoded
     // by multiple decoders in parallel. A downside of this is that the
     // upstream source will never be consumed, which is probably okay?
-    return peek(context).inputStream().use { stream ->
-      @Suppress("DEPRECATION")
-      BitmapRegionDecoder.newInstance(stream, /* ignored */ false)!!
+    return PooledAndroidImageRegionDecoderFactory(this) { context ->
+      peek(context).inputStream().use { stream ->
+        @Suppress("DEPRECATION")
+        BitmapRegionDecoder.newInstance(stream, /* ignored */ false)!!
+      }
     }
   }
 

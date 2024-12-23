@@ -1,13 +1,26 @@
+@file:Suppress("FunctionName", "NAME_SHADOWING")
+
 package me.saket.telephoto.subsamplingimage.internal
 
 import android.app.ActivityManager
+import android.content.Context
 import android.graphics.BitmapRegionDecoder
 import androidx.annotation.VisibleForTesting
+import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.core.content.getSystemService
 import kotlinx.coroutines.channels.Channel
+import me.saket.telephoto.subsamplingimage.SubSamplingImageSource
 import me.saket.telephoto.subsamplingimage.internal.ImageRegionDecoder.DecodeResult
 import me.saket.telephoto.subsamplingimage.internal.ImageRegionDecoder.FactoryParams
+
+internal fun PooledAndroidImageRegionDecoderFactory(
+  imageSource: SubSamplingImageSource,
+  createDecoder: (context: Context) -> BitmapRegionDecoder
+): ImageRegionDecoder.Factory = PooledImageRegionDecoder.Factory(
+  imageSource = imageSource,
+  delegate = AndroidImageRegionDecoder.Factory(imageSource, createDecoder),
+)
 
 /**
  * Maintains a pool of decoders to load multiple bitmap regions in parallel. Without this,
@@ -19,9 +32,9 @@ internal class PooledImageRegionDecoder private constructor(
   private val decoders: ResourcePool<ImageRegionDecoder>,
 ) : ImageRegionDecoder {
 
-  override suspend fun decodeRegion(region: ImageRegionTile): DecodeResult {
+  override suspend fun decodeRegion(region: IntRect, sampleSize: Int): DecodeResult {
     return decoders.borrow { decoder ->
-      decoder.decodeRegion(region)
+      decoder.decodeRegion(region, sampleSize)
     }
   }
 
@@ -33,7 +46,17 @@ internal class PooledImageRegionDecoder private constructor(
     @VisibleForTesting
     internal var overriddenPoolCount: Int? = null
 
-    fun Factory(delegate: ImageRegionDecoder.Factory) = ImageRegionDecoder.Factory { params ->
+    fun Factory(
+      imageSource: SubSamplingImageSource,
+      delegate: ImageRegionDecoder.Factory
+    ) = ImageRegionDecoder.Factory { params ->
+      val exif = ExifMetadata.read(params.context, imageSource)
+      val params = FactoryParams(
+        context = params.context,
+        imageOptions = params.imageOptions,
+        extras = params.extras.plus(ExifMetadata::class to exif),
+      )
+
       val decoders = buildList<ImageRegionDecoder> {
         add(delegate.create(params))
         repeat(calculatePoolCount(params, first().imageSize) - 1) {

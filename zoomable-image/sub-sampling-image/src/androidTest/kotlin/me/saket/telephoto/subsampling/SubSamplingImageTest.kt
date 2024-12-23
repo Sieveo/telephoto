@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,11 +54,7 @@ import me.saket.telephoto.subsamplingimage.RealSubSamplingImageState
 import me.saket.telephoto.subsamplingimage.SubSamplingImage
 import me.saket.telephoto.subsamplingimage.SubSamplingImageSource
 import me.saket.telephoto.subsamplingimage.SubSamplingImageState
-import me.saket.telephoto.subsamplingimage.internal.AndroidImageRegionDecoder
 import me.saket.telephoto.subsamplingimage.internal.ImageRegionDecoder
-import me.saket.telephoto.subsamplingimage.internal.ImageRegionTile
-import me.saket.telephoto.subsamplingimage.internal.ImageSampleSize
-import me.saket.telephoto.subsamplingimage.internal.LocalImageRegionDecoderFactory
 import me.saket.telephoto.subsamplingimage.internal.PooledImageRegionDecoder
 import me.saket.telephoto.subsamplingimage.rememberSubSamplingImageState
 import me.saket.telephoto.subsamplingimage.test.R
@@ -250,47 +245,41 @@ class SubSamplingImageTest {
     // This test blocks 2 decoders indefinitely so at least 3 decoders are needed.
     PooledImageRegionDecoder.overriddenPoolCount = 3
 
-    // This fake image factory will only decode the base tile.
-    val fakeRegionDecoderFactory = ImageRegionDecoder.Factory { params ->
-      val real = AndroidImageRegionDecoder.Factory.create(params)
-      object : ImageRegionDecoder by real {
-        override suspend fun decodeRegion(region: ImageRegionTile): ImageRegionDecoder.DecodeResult {
-          return if (region.sampleSize == ImageSampleSize(1) && region.bounds.left == 3648) {
-            delay(Long.MAX_VALUE)
-            error("shouldn't reach here")
-          } else {
-            real.decodeRegion(region)
-          }
+    // This fake image decoder will only decode the base tile.
+    val imageSource = SubSamplingImageSource.asset("pahade.jpg")
+      .withDecodeInterceptor { region, sampleSize, continueDecoding ->
+        if (sampleSize == 1 && region.left == 3648) {
+          delay(Long.MAX_VALUE)
+          error("shouldn't reach here")
+        } else {
+          continueDecoding()
         }
       }
-    }
 
     rule.setContent {
       BoxWithConstraints {
         check(constraints.maxWidth == 1080 && constraints.maxHeight == 2400) {
           "This test was written for a 1080x2400 display. Current size = $constraints"
         }
-        CompositionLocalProvider(LocalImageRegionDecoderFactory provides fakeRegionDecoderFactory) {
-          val zoomableState = rememberZoomableState(
-            zoomSpec = ZoomSpec(maxZoomFactor = 1f)
-          ).also {
-            it.contentScale = ContentScale.Crop
-          }
-
-          SubSamplingImage(
-            modifier = Modifier
-              .fillMaxSize()
-              .zoomable(zoomableState)
-              .testTag("image"),
-            state = rememberSubSamplingImageState(
-              zoomableState = zoomableState,
-              imageSource = SubSamplingImageSource.asset("pahade.jpg"),
-            ).asReal().also {
-              it.showTileBounds = true
-            },
-            contentDescription = null,
-          )
+        val zoomableState = rememberZoomableState(
+          zoomSpec = ZoomSpec(maxZoomFactor = 1f)
+        ).also {
+          it.contentScale = ContentScale.Crop
         }
+
+        SubSamplingImage(
+          modifier = Modifier
+            .fillMaxSize()
+            .zoomable(zoomableState)
+            .testTag("image"),
+          state = rememberSubSamplingImageState(
+            zoomableState = zoomableState,
+            imageSource = imageSource,
+          ).asReal().also {
+            it.showTileBounds = true
+          },
+          contentDescription = null,
+        )
       }
     }
 
@@ -307,41 +296,35 @@ class SubSamplingImageTest {
     // This test only allows 1 decoder to work so at least 2 decoders are needed.
     PooledImageRegionDecoder.overriddenPoolCount = 2
 
-    // This fake factory will ignore decoding of all but the first tiles.
+    // This fake decoder will ignore decoding of all but the first tiles.
     val firstNonBaseTileReceived = AtomicBoolean(false)
-    val fakeRegionDecoderFactory = ImageRegionDecoder.Factory { params ->
-      val real = AndroidImageRegionDecoder.Factory.create(params)
-      object : ImageRegionDecoder by real {
-        override suspend fun decodeRegion(region: ImageRegionTile): ImageRegionDecoder.DecodeResult {
-          val isBaseTile = region.sampleSize.size == 8
-          val isCentroidTile = region.sampleSize.size == 1 && region.bounds == IntRect(0, 1200, 1216, 3265)
-          return if (isBaseTile || (isCentroidTile && !firstNonBaseTileReceived.getAndSet(true))) {
-            real.decodeRegion(region)
-          } else {
-            delay(Long.MAX_VALUE)
-            error("shouldn't reach here")
-          }
+    val imageSource = SubSamplingImageSource.asset("pahade.jpg")
+      .withDecodeInterceptor { region, sampleSize, continueDecoding ->
+        val isBaseTile = sampleSize == 8
+        val isCentroidTile = sampleSize == 1 && region == IntRect(0, 1200, 1216, 3265)
+        if (isBaseTile || (isCentroidTile && !firstNonBaseTileReceived.getAndSet(true))) {
+          continueDecoding()
+        } else {
+          delay(Long.MAX_VALUE)
+          error("shouldn't reach here")
         }
       }
-    }
 
     rule.setContent {
-      CompositionLocalProvider(LocalImageRegionDecoderFactory provides fakeRegionDecoderFactory) {
-        val zoomableState = rememberZoomableState()
-        SubSamplingImage(
-          modifier = Modifier
-            .fillMaxSize()
-            .zoomable(zoomableState)
-            .testTag("image"),
-          state = rememberSubSamplingImageState(
-            zoomableState = zoomableState,
-            imageSource = SubSamplingImageSource.asset("pahade.jpg"),
-          ).asReal().also {
-            it.showTileBounds = true
-          },
-          contentDescription = null,
-        )
-      }
+      val zoomableState = rememberZoomableState()
+      SubSamplingImage(
+        modifier = Modifier
+          .fillMaxSize()
+          .zoomable(zoomableState)
+          .testTag("image"),
+        state = rememberSubSamplingImageState(
+          zoomableState = zoomableState,
+          imageSource = imageSource,
+        ).asReal().also {
+          it.showTileBounds = true
+        },
+        contentDescription = null,
+      )
     }
 
     rule.onNodeWithTag("image").performTouchInput {
@@ -565,38 +548,32 @@ class SubSamplingImageTest {
     val previewBitmapMutex = Mutex(locked = true)
     var fullImageDecoded = false
 
-    val gatedDecoderFactory = ImageRegionDecoder.Factory { params ->
-      val real = AndroidImageRegionDecoder.Factory.create(params)
-      object : ImageRegionDecoder by real {
-        override suspend fun decodeRegion(region: ImageRegionTile): ImageRegionDecoder.DecodeResult {
-          return previewBitmapMutex.withLock {
-            real.decodeRegion(region)
-          }.also {
-            fullImageDecoded = true
-          }
-        }
-      }
-    }
-
     val previewBitmap = BitmapFactory.decodeStream(
       rule.activity.assets.open("smol.jpg")
     ).asImageBitmap()
 
-    rule.setContent {
-      CompositionLocalProvider(LocalImageRegionDecoderFactory provides gatedDecoderFactory) {
-        val zoomableState = rememberZoomableState()
-        SubSamplingImage(
-          modifier = Modifier
-            .fillMaxSize()
-            .zoomable(zoomableState)
-            .testTag("image"),
-          state = rememberSubSamplingImageState(
-            zoomableState = zoomableState,
-            imageSource = SubSamplingImageSource.asset("bellagio_rotated_by_90.jpg", preview = previewBitmap),
-          ),
-          contentDescription = null,
-        )
+    val imageSource = SubSamplingImageSource.asset("bellagio_rotated_by_90.jpg", preview = previewBitmap)
+      .withDecodeInterceptor { _, _, continueDecoding ->
+        previewBitmapMutex.withLock {
+          continueDecoding()
+        }.also {
+          fullImageDecoded = true
+        }
       }
+
+    rule.setContent {
+      val zoomableState = rememberZoomableState()
+      SubSamplingImage(
+        modifier = Modifier
+          .fillMaxSize()
+          .zoomable(zoomableState)
+          .testTag("image"),
+        state = rememberSubSamplingImageState(
+          zoomableState = zoomableState,
+          imageSource = imageSource,
+        ),
+        contentDescription = null,
+      )
     }
 
     rule.waitUntil {
@@ -656,45 +633,38 @@ class SubSamplingImageTest {
     PooledImageRegionDecoder.overriddenPoolCount = 2
 
     val mutexForDecodingLastTile = Mutex(locked = true)
-
-    val fakeRegionDecoderFactory = ImageRegionDecoder.Factory { params ->
-      val real = AndroidImageRegionDecoder.Factory.create(params)
-      object : ImageRegionDecoder by real {
-        override suspend fun decodeRegion(region: ImageRegionTile): ImageRegionDecoder.DecodeResult {
-          return if (region.sampleSize == ImageSampleSize(1)) {
-            if (region.bounds.topLeft == IntOffset(4864, 1200)) {
-              mutexForDecodingLastTile.lock()
-            }
-            ImageRegionDecoder.DecodeResult(
-              painter = ColorPainter(Color.Yellow.copy(alpha = 0.5f)),
-              hasUltraHdrContent = false,
-            )
-          } else {
-            real.decodeRegion(region)
+    val imageSource = SubSamplingImageSource.asset("pahade.jpg")
+      .withDecodeInterceptor { region, sampleSize, continueDecoding ->
+        if (sampleSize == 1) {
+          if (region.topLeft == IntOffset(4864, 1200)) {
+            mutexForDecodingLastTile.lock()
           }
+          ImageRegionDecoder.DecodeResult(
+            painter = ColorPainter(Color.Yellow.copy(alpha = 0.5f)),
+            hasUltraHdrContent = false,
+          )
+        } else {
+          continueDecoding()
         }
       }
-    }
 
     lateinit var imageState: SubSamplingImageState
     rule.setContent {
       val zoomableState = rememberZoomableState(
         zoomSpec = ZoomSpec(maxZoomFactor = 1f)
       )
-      CompositionLocalProvider(LocalImageRegionDecoderFactory provides fakeRegionDecoderFactory) {
-        imageState = rememberSubSamplingImageState(
-          zoomableState = zoomableState,
-          imageSource = SubSamplingImageSource.asset("pahade.jpg"),
-        )
-        SubSamplingImage(
-          modifier = Modifier
-            .fillMaxSize()
-            .zoomable(zoomableState)
-            .testTag("image"),
-          state = imageState,
-          contentDescription = null,
-        )
-      }
+      imageState = rememberSubSamplingImageState(
+        zoomableState = zoomableState,
+        imageSource = imageSource,
+      )
+      SubSamplingImage(
+        modifier = Modifier
+          .fillMaxSize()
+          .zoomable(zoomableState)
+          .testTag("image"),
+        state = imageState,
+        contentDescription = null,
+      )
     }
 
     rule.waitUntil { imageState.isImageDisplayed }
@@ -720,37 +690,32 @@ class SubSamplingImageTest {
 
   @Test fun do_not_load_images_for_tiles_that_are_not_visible() {
     val decodedRegionCount = AtomicInteger(0)
-    val recordingDecoderFactory = ImageRegionDecoder.Factory { params ->
-      val real = AndroidImageRegionDecoder.Factory.create(params)
-      object : ImageRegionDecoder by real {
-        override suspend fun decodeRegion(region: ImageRegionTile): ImageRegionDecoder.DecodeResult =
-          real.decodeRegion(region).also {
-            if (region.sampleSize == ImageSampleSize(1)) {
-              decodedRegionCount.incrementAndGet()
-            }
+    val imageSource = SubSamplingImageSource.asset("pahade.jpg")
+      .withDecodeInterceptor { _, sampleSize, continueDecoding ->
+        continueDecoding().also {
+          if (sampleSize == 1) {
+            decodedRegionCount.incrementAndGet()
           }
+        }
       }
-    }
 
     lateinit var imageState: SubSamplingImageState
     rule.setContent {
       val zoomableState = rememberZoomableState(
         zoomSpec = ZoomSpec(maxZoomFactor = 1f)
       )
-      CompositionLocalProvider(LocalImageRegionDecoderFactory provides recordingDecoderFactory) {
-        imageState = rememberSubSamplingImageState(
-          zoomableState = zoomableState,
-          imageSource = SubSamplingImageSource.asset("pahade.jpg"),
-        )
-        SubSamplingImage(
-          modifier = Modifier
-            .fillMaxSize()
-            .zoomable(zoomableState)
-            .testTag("image"),
-          state = imageState,
-          contentDescription = null,
-        )
-      }
+      imageState = rememberSubSamplingImageState(
+        zoomableState = zoomableState,
+        imageSource = imageSource,
+      )
+      SubSamplingImage(
+        modifier = Modifier
+          .fillMaxSize()
+          .zoomable(zoomableState)
+          .testTag("image"),
+        state = imageState,
+        contentDescription = null,
+      )
     }
 
     rule.waitUntil { imageState.isImageDisplayed }
@@ -909,3 +874,28 @@ private fun Context.createFileFromAsset(assetName: String): Path {
 }
 
 private fun SubSamplingImageState.asReal() = this as RealSubSamplingImageState
+
+private fun SubSamplingImageSource.withDecodeInterceptor(
+  intercept: suspend (
+    region: IntRect,
+    sampleSize: Int,
+    continueDecoding: suspend () -> ImageRegionDecoder.DecodeResult,
+  ) -> ImageRegionDecoder.DecodeResult,
+): SubSamplingImageSource {
+  val delegate = this
+  return object : SubSamplingImageSource by delegate {
+    override suspend fun decoder(): ImageRegionDecoder.Factory {
+      return ImageRegionDecoder.Factory { params ->
+        val real = delegate.decoder().create(params)
+        object : ImageRegionDecoder by real {
+          override suspend fun decodeRegion(
+            region: IntRect,
+            sampleSize: Int,
+          ) = intercept(region, sampleSize) {
+            real.decodeRegion(region, sampleSize)
+          }
+        }
+      }
+    }
+  }
+}
