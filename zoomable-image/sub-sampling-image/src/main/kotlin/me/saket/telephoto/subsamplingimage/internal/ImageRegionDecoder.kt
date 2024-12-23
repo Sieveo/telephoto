@@ -15,11 +15,17 @@ import kotlin.reflect.cast
  * Also see: [AndroidImageRegionDecoder] and [PooledAndroidImageRegionDecoder].
  */
 interface ImageRegionDecoder {
-  /** Raw size of the image, without any scaling applied. */
+  /** Size of the full image, without any scaling applied. */
   val imageSize: IntSize
 
   /**
-   * Decodes a specific region of the image with sub-sampling to downsize it.
+   * Decodes a specific region of the image.
+   *
+   * When `sampleSize > 1`, the partial image is downsized by sub-sampling the pixels.
+   * The sample size is the number of pixels in either dimension that correspond to a
+   * single pixel in the decoded image. For example, a value of `sampleSize == 4` returns
+   * an image that is 1/4 the width/height of the original, and 1/16 the number of pixels.
+   * Values smaller than 1 are treated the same as 1.
    *
    * This is designed to be called concurrently for all visible regions of the image.
    * Implementations must handle synchronization if needed.
