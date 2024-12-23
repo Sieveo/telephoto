@@ -1,6 +1,5 @@
 package me.saket.telephoto.subsamplingimage.internal
 
-import android.content.Context
 import android.graphics.BitmapFactory
 import android.graphics.BitmapRegionDecoder
 import android.os.Build.VERSION.SDK_INT
@@ -92,15 +91,16 @@ internal class AndroidImageRegionDecoder private constructor(
     @OptIn(ExperimentalCoroutinesApi::class)
     fun Factory(
       imageSource: SubSamplingImageSource,
-      createDecoder: (context: Context) -> BitmapRegionDecoder,
+      exif: ExifMetadata,
+      createDecoder: () -> BitmapRegionDecoder,
     ) = ImageRegionDecoder.Factory { params ->
       val dispatcher = Dispatchers.IO.limitedParallelism(1)
 
       AndroidImageRegionDecoder(
         imageSource = imageSource,
         imageOptions = params.imageOptions,
-        decoder = withContext(dispatcher) { createDecoder(params.context) },
-        exif = params.extra(ExifMetadata::class) ?: error("exif metadata not found"),
+        decoder = withContext(dispatcher) { createDecoder() },
+        exif = exif,
         dispatcher = dispatcher,
       )
     }

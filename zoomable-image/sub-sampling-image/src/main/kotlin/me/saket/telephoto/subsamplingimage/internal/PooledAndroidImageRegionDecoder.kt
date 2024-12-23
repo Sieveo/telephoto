@@ -12,7 +12,6 @@ import androidx.core.content.getSystemService
 import kotlinx.coroutines.channels.Channel
 import me.saket.telephoto.subsamplingimage.SubSamplingImageSource
 import me.saket.telephoto.subsamplingimage.internal.ImageRegionDecoder.DecodeResult
-import me.saket.telephoto.subsamplingimage.internal.ImageRegionDecoder.FactoryParams
 
 /**
  * Maintains a pool of decoders to load multiple bitmap regions in parallel. Without this,
@@ -42,21 +41,18 @@ internal class PooledAndroidImageRegionDecoder private constructor(
       imageSource: SubSamplingImageSource,
       createDecoder: (context: Context) -> BitmapRegionDecoder,
     ) = ImageRegionDecoder.Factory { params ->
-      val exif = ExifMetadata.read(params.context, imageSource)
-      val params = FactoryParams(
-        context = params.context,
-        imageOptions = params.imageOptions,
-        extras = params.extras.plus(ExifMetadata::class to exif),
-      )
+      // The exif metadata is read once and shared by all pooled decoders.
+      val context = params.extra(Context::class) ?: error("context not found")
+      val exif = ExifMetadata.read(context, imageSource)
 
       val delegate = AndroidImageRegionDecoder.Factory(
         imageSource = imageSource,
-        createDecoder = createDecoder,
+        exif = exif,
+        createDecoder = { createDecoder(context) },
       )
-
       val decoders = buildList<ImageRegionDecoder> {
         add(delegate.create(params))
-        repeat(calculatePoolCount(params, first().imageSize) - 1) {
+        repeat(calculatePoolCount(context, first().imageSize) - 1) {
           add(delegate.create(params))
         }
       }
@@ -66,11 +62,11 @@ internal class PooledAndroidImageRegionDecoder private constructor(
       )
     }
 
-    private fun calculatePoolCount(params: FactoryParams, imageSize: IntSize): Int {
+    private fun calculatePoolCount(context: Context, imageSize: IntSize): Int {
       overriddenPoolCount?.let {
         return it
       }
-      val activityManager = params.context.getSystemService<ActivityManager>()!!
+      val activityManager = context.getSystemService<ActivityManager>()!!
       val memoryInfo = ActivityManager.MemoryInfo().apply(activityManager::getMemoryInfo)
       if (memoryInfo.lowMemory || activityManager.isLowRamDevice) {
         return 1

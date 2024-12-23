@@ -2,6 +2,7 @@
 
 package me.saket.telephoto.subsamplingimage
 
+import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -108,8 +109,8 @@ private fun createImageRegionDecoder(
       try {
         decoder = imageSource.decoder().create(
           ImageRegionDecoder.FactoryParams(
-            context = context,
             imageOptions = imageOptions,
+            extras = mapOf(Context::class to context),
           )
         )
       } catch (e: IOException) {

@@ -1,6 +1,5 @@
 package me.saket.telephoto.subsamplingimage.internal
 
-import android.content.Context
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
@@ -42,9 +41,8 @@ interface ImageRegionDecoder {
 
   @Poko
   class FactoryParams(
-    val context: Context,
     val imageOptions: ImageBitmapOptions,
-    val extras: Map<KClass<*>, Any> = emptyMap(),
+    val extras: Map<KClass<*>, Any>,
   ) {
     /** Returns extra factory params of type [type], or null if no such value is held. */
     fun <T : Any> extra(type: KClass<out T>): T? {
