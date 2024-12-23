@@ -97,15 +97,9 @@ package me.saket.telephoto.subsamplingimage.internal {
     method public suspend Object? create(me.saket.telephoto.subsamplingimage.internal.ImageRegionDecoder.FactoryParams params, kotlin.coroutines.Continuation<? super me.saket.telephoto.subsamplingimage.internal.ImageRegionDecoder>);
   }
 
-  @dev.drewhamilton.poko.Poko public static final class ImageRegionDecoder.FactoryParams {
-    ctor public ImageRegionDecoder.FactoryParams(android.content.Context context, me.saket.telephoto.subsamplingimage.ImageBitmapOptions imageOptions, optional java.util.Map<kotlin.reflect.KClass<?>,?> extras);
-    method public <T> T? extra(kotlin.reflect.KClass<? extends T> type);
-    method public android.content.Context getContext();
-    method public java.util.Map<kotlin.reflect.KClass<?>,java.lang.Object> getExtras();
+  public static interface ImageRegionDecoder.FactoryParams {
     method public me.saket.telephoto.subsamplingimage.ImageBitmapOptions getImageOptions();
-    property public final android.content.Context context;
-    property public final java.util.Map<kotlin.reflect.KClass<?>,java.lang.Object> extras;
-    property public final me.saket.telephoto.subsamplingimage.ImageBitmapOptions imageOptions;
+    property public abstract me.saket.telephoto.subsamplingimage.ImageBitmapOptions imageOptions;
   }
 
 }

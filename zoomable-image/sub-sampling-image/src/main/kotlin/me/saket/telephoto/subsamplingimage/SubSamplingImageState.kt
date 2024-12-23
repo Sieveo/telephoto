@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.toSize
+import me.saket.telephoto.subsamplingimage.internal.AndroidImageDecoderFactoryParams
 import me.saket.telephoto.subsamplingimage.internal.ImageRegionDecoder
 import me.saket.telephoto.zoomable.ZoomableContentLocation
 import me.saket.telephoto.zoomable.ZoomableContentTransformation
@@ -100,17 +101,17 @@ private fun createImageRegionDecoder(
   imageOptions: ImageBitmapOptions,
   errorReporter: SubSamplingImageErrorReporter
 ): ImageRegionDecoder? {
-  val context = LocalContext.current
   val errorReporter by rememberUpdatedState(errorReporter)
   var decoder by remember(imageSource) { mutableStateOf<ImageRegionDecoder?>(null) }
 
   if (!LocalInspectionMode.current) {
+    val context = LocalContext.current
     LaunchedEffect(imageSource) {
       try {
         decoder = imageSource.decoder().create(
-          ImageRegionDecoder.FactoryParams(
+          AndroidImageDecoderFactoryParams(
+            context = context,
             imageOptions = imageOptions,
-            extras = mapOf(Context::class to context),
           )
         )
       } catch (e: IOException) {

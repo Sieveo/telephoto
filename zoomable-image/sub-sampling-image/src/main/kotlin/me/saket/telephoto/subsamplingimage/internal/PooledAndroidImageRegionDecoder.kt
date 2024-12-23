@@ -37,30 +37,25 @@ internal class PooledAndroidImageRegionDecoder private constructor(
     @VisibleForTesting
     internal var overriddenPoolCount: Int? = null
 
-    fun Factory(
-      imageSource: SubSamplingImageSource,
-      createDecoder: (context: Context) -> BitmapRegionDecoder,
-    ) = ImageRegionDecoder.Factory { params ->
-      // The exif metadata is read once and shared by all pooled decoders.
-      val context = params.extra(Context::class) ?: error("context not found")
-      val exif = ExifMetadata.read(context, imageSource)
-
-      val delegate = AndroidImageRegionDecoder.Factory(
-        imageSource = imageSource,
-        exif = exif,
-        createDecoder = { createDecoder(context) },
-      )
-      val decoders = buildList<ImageRegionDecoder> {
-        add(delegate.create(params))
-        repeat(calculatePoolCount(context, first().imageSize) - 1) {
+    fun Factory(imageSource: SubSamplingImageSource, createDecoder: (context: Context) -> BitmapRegionDecoder) =
+      ImageRegionDecoder.Factory { params ->
+        check(params is AndroidImageDecoderFactoryParams)
+        val delegate = AndroidImageRegionDecoder.Factory(
+          imageSource = imageSource,
+          exif = ExifMetadata.read(params.context, imageSource),
+          createDecoder = { createDecoder(params.context) },
+        )
+        val decoders = buildList<ImageRegionDecoder> {
           add(delegate.create(params))
+          repeat(calculatePoolCount(params.context, first().imageSize) - 1) {
+            add(delegate.create(params))
+          }
         }
+        PooledAndroidImageRegionDecoder(
+          imageSize = decoders.first().imageSize,
+          decoders = ResourcePool(decoders),
+        )
       }
-      PooledAndroidImageRegionDecoder(
-        imageSize = decoders.first().imageSize,
-        decoders = ResourcePool(decoders),
-      )
-    }
 
     private fun calculatePoolCount(context: Context, imageSize: IntSize): Int {
       overriddenPoolCount?.let {
