@@ -114,7 +114,7 @@ interface SubSamplingImageSource : Closeable {
       preview: ImageBitmap? = null
     ): SubSamplingImageSource? {
       // While ContentResolver can be used for reading assets, files, resources uris,
-      // reading them through their specialized APIs can be significantly faster.
+      // decoding bitmaps through their specialized APIs can be significantly faster.
       return when (val type = UriType.parse(uri)) {
         is UriType.AssetUri -> AssetImageSource(type.asset, preview)
         is UriType.FileUri -> FileImageSource(type.path, preview, onClose = null)
@@ -140,13 +140,18 @@ interface SubSamplingImageSource : Closeable {
     ): SubSamplingImageSource = RawImageSource(source, preview, onClose)
   }
 
-  /** Peeks into the source without consuming its bytes. */
-  fun peek(context: Context): BufferedSource
-
   suspend fun decoder(): ImageRegionDecoder.Factory
 
   /** Called when the image is no longer visible. */
   override fun close() = Unit
+}
+
+internal interface BufferedSubSamplingImageSource : SubSamplingImageSource {
+  /**
+   * Peeks into the source without consuming its bytes.
+   * Used for inspecting the source's exif metadata, file format, etc.
+   */
+  fun peek(context: Context): BufferedSource
 }
 
 @Immutable
@@ -154,7 +159,7 @@ internal data class FileImageSource(
   val path: Path,
   override val preview: ImageBitmap?,
   val onClose: Closeable?
-) : SubSamplingImageSource {
+) : BufferedSubSamplingImageSource {
   init {
     check(path.isAbsolute)
   }
@@ -181,7 +186,7 @@ internal data class FileImageSource(
 internal data class AssetImageSource(
   private val asset: AssetPath,
   override val preview: ImageBitmap?
-) : SubSamplingImageSource {
+) : BufferedSubSamplingImageSource {
 
   override fun peek(context: Context): BufferedSource {
     return inputStream(context).source().buffer()
@@ -208,7 +213,7 @@ internal data class AssetImageSource(
 internal data class ResourceImageSource(
   @DrawableRes val id: Int,
   override val preview: ImageBitmap?,
-) : SubSamplingImageSource {
+) : BufferedSubSamplingImageSource {
 
   override fun peek(context: Context): BufferedSource {
     return inputStream(context).source().buffer()
@@ -233,7 +238,7 @@ internal data class ResourceImageSource(
 internal data class UriImageSource(
   private val uri: Uri,
   override val preview: ImageBitmap?
-) : SubSamplingImageSource {
+) : BufferedSubSamplingImageSource {
 
   override fun peek(context: Context): BufferedSource {
     return inputStream(context).source().buffer()
@@ -258,7 +263,7 @@ internal data class RawImageSource(
   private val source: () -> Source,
   override val preview: ImageBitmap? = null,
   private val onClose: Closeable?
-) : SubSamplingImageSource {
+) : BufferedSubSamplingImageSource {
 
   private val bufferedSource: BufferedSource by lazy(NONE) {
     source().buffer()

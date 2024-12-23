@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.exifinterface.media.ExifInterface
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import me.saket.telephoto.subsamplingimage.BufferedSubSamplingImageSource
 import me.saket.telephoto.subsamplingimage.SubSamplingImageSource
 import java.io.InputStream
 
@@ -20,6 +21,9 @@ internal data class ExifMetadata(
 
   companion object {
     suspend fun read(context: Context, source: SubSamplingImageSource): ExifMetadata {
+      if (source !is BufferedSubSamplingImageSource) {
+        return ExifMetadata(ImageOrientation.None)
+      }
       return withContext(Dispatchers.Default) {
         source.peek(context).inputStream().use { inputStream ->
           val exif = ExifInterface(

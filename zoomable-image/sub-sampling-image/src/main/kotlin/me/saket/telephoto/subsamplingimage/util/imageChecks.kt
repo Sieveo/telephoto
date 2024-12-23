@@ -5,6 +5,7 @@ import android.util.TypedValue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.saket.telephoto.subsamplingimage.ResourceImageSource
+import me.saket.telephoto.subsamplingimage.BufferedSubSamplingImageSource
 import me.saket.telephoto.subsamplingimage.SubSamplingImageSource
 import me.saket.telephoto.subsamplingimage.internal.AndroidImageRegionDecoder
 import me.saket.telephoto.subsamplingimage.internal.isGif
@@ -18,6 +19,9 @@ suspend fun SubSamplingImageSource.canBeSubSampled(context: Context): Boolean {
   if (this is ResourceImageSource) {
     return !isVectorDrawable(context)
   }
+  if (this !is BufferedSubSamplingImageSource) {
+    return true
+  }
 
   return withContext(Dispatchers.IO) {
     peek(context).use {
@@ -30,6 +34,9 @@ suspend fun SubSamplingImageSource.canBeSubSampled(context: Context): Boolean {
 
 /** Check whether an image source exists and has non-zero bytes. */
 suspend fun SubSamplingImageSource.exists(context: Context): Boolean {
+  if (this !is BufferedSubSamplingImageSource) {
+    return true
+  }
   return withContext(Dispatchers.IO) {
     try {
       peek(context).read(Buffer(), byteCount = 1) != -1L
