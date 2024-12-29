@@ -101,6 +101,9 @@ sealed interface ZoomableState {
   /** The zoom spec passed to [rememberZoomableState]. */
   val zoomSpec: ZoomSpec
 
+  /** Whether any zoom, pan (or both) animation is in progress. */
+  val isAnimationRunning: Boolean
+
   /** See [ZoomableContentLocation]. */
   fun setContentLocation(location: ZoomableContentLocation)
 

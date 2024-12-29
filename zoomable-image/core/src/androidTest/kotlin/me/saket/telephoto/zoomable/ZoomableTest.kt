@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -34,6 +35,7 @@ import androidx.compose.ui.unit.center
 import androidx.compose.ui.unit.dp
 import assertk.assertThat
 import assertk.assertions.containsOnly
+import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isGreaterThan
 import assertk.assertions.isLessThan
@@ -43,6 +45,9 @@ import assertk.assertions.isTrue
 import com.dropbox.dropshots.Dropshots
 import com.google.testing.junit.testparameterinjector.TestParameter
 import com.google.testing.junit.testparameterinjector.TestParameterInjector
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.consumeAsFlow
+import kotlinx.coroutines.test.runTest
 import leakcanary.LeakAssertions
 import me.saket.telephoto.util.ScreenshotTestActivity
 import org.junit.After
@@ -318,8 +323,69 @@ class ZoomableTest {
       }
     }
   }
+
+  @Test fun correctly_calculate_isAnimationRunning() = runTest {
+    lateinit var state: ZoomableState
+    val animatedZoomTriggers = Channel<Float>(capacity = 5)
+    val recordedValues = ArrayDeque<Boolean>()
+
+    rule.setContent {
+      state = rememberZoomableState(
+        ZoomSpec(
+          maxZoomFactor = 2f,
+          preventOverOrUnderZoom = false,
+        )
+      )
+      Box(
+        Modifier
+          .fillMaxSize()
+          .zoomable(state)
+          .testTag("content")
+      )
+
+      LaunchedEffect(Unit) {
+        animatedZoomTriggers.consumeAsFlow().collect {
+          state.zoomTo(zoomFactor = it)
+        }
+      }
+      LaunchedEffect(Unit) {
+        snapshotFlow { state.isAnimationRunning }
+          .collect {
+            recordedValues.addLast(it)
+          }
+      }
+    }
+
+    rule.waitUntil { state.contentTransformation.isSpecified }
+    assertThat(recordedValues.removeAll()).containsOnly(false)
+
+    rule.onNodeWithTag("content").performTouchInput { doubleClick() }
+    rule.waitUntil { state.contentTransformation.scaleMetadata.userZoom == 2f }
+    assertThat(recordedValues.removeAll()).containsOnly(true, false)
+
+    // Pans made by the user should not cause any animation.
+    rule.onNodeWithTag("content").performTouchInput {
+      swipeLeft(startX = center.x, endX = center.x - 2f)
+    }
+    rule.runOnIdle {
+      assertThat(recordedValues.removeAll()).isEmpty()
+    }
+
+    animatedZoomTriggers.trySend(0.5f)
+    rule.waitUntil {
+      state.contentTransformation.scaleMetadata.userZoom == 0.5f
+    }
+    assertThat(recordedValues.removeAll()).containsOnly(true, false)
+  }
 }
 
 internal fun ZoomableState.real(): RealZoomableState {
   return this as RealZoomableState  // Safe because ZoomableState is a sealed type.
+}
+
+private fun <T> ArrayDeque<T>.removeAll(): List<T> {
+  val source = this
+  val destination = ArrayList(source)
+  source.clear()
+  return destination
 }

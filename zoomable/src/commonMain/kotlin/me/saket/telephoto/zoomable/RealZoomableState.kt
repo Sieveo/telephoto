@@ -47,6 +47,7 @@ import me.saket.telephoto.zoomable.ZoomableContentLocation.SameAsLayoutBounds
 import me.saket.telephoto.zoomable.internal.MutatePriorities
 import me.saket.telephoto.zoomable.internal.PlaceholderBoundsProvider
 import me.saket.telephoto.zoomable.internal.RealZoomableContentTransformation
+import me.saket.telephoto.zoomable.internal.TransformScope
 import me.saket.telephoto.zoomable.internal.TransformableState
 import me.saket.telephoto.zoomable.internal.Zero
 import me.saket.telephoto.zoomable.internal.ZoomableSavedState
@@ -118,7 +119,8 @@ internal class RealZoomableState internal constructor(
   override var autoApplyTransformations: Boolean by mutableStateOf(autoApplyTransformations)
   override var contentScale: ContentScale by mutableStateOf(ContentScale.Fit)
   override var contentAlignment: Alignment by mutableStateOf(Alignment.Center)
-  override var zoomSpec by mutableStateOf(ZoomSpec())
+  override var zoomSpec: ZoomSpec by mutableStateOf(ZoomSpec())
+  override var isAnimationRunning: Boolean by mutableStateOf(false)
 
   internal var hardwareShortcutsSpec by mutableStateOf(HardwareShortcutsSpec())
   internal var layoutDirection: LayoutDirection by mutableStateOf(LayoutDirection.Ltr)
@@ -489,7 +491,7 @@ internal class RealZoomableState internal constructor(
         inputs = gestureStateInputs,
       )
 
-    transformableState.transform(mutatePriority) {
+    transformableState.animatedTransform(mutatePriority) {
       AnimationState(initialValue = 0f).animateTo(
         targetValue = 1f,
         animationSpec = if (animationSpec is SpringSpec<Float>) {
@@ -550,7 +552,7 @@ internal class RealZoomableState internal constructor(
       .coerceUserZoomIn(zoomSpec.range)
       .userZoom
 
-    transformableState.transform(MutatePriority.Default) {
+    transformableState.animatedTransform(MutatePriority.Default) {
       var previous = gestureState.userZoom.value
       AnimationState(initialValue = previous).animateTo(
         targetValue = userZoomWithinBounds.value,
@@ -569,7 +571,7 @@ internal class RealZoomableState internal constructor(
     check(velocity.x.isFinite() && velocity.y.isFinite()) { "Invalid velocity = $velocity" }
 
     val gestureState = calculateGestureState() ?: error("called too early?")
-    transformableState.transform(MutatePriorities.FlingAnimation) {
+    transformableState.animatedTransform(MutatePriorities.FlingAnimation) {
       var previous = gestureState.userOffset.value
       AnimationState(
         typeConverter = Offset.VectorConverter,
@@ -626,6 +628,20 @@ internal class RealZoomableState internal constructor(
 
   private fun calculateGestureState(): GestureState? {
     return currentGestureStateInputs?.let(gestureState::calculate)
+  }
+
+  private suspend fun TransformableState.animatedTransform(
+    transformPriority: MutatePriority = MutatePriority.Default,
+    block: suspend TransformScope.() -> Unit,
+  ) {
+    transform(transformPriority) {
+      try {
+        isAnimationRunning = true
+        block()
+      } finally {
+        isAnimationRunning = false
+      }
+    }
   }
 
   private fun collectDebugInfo(vararg extras: Pair<String, Any>): String {
