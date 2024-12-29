@@ -92,25 +92,27 @@ private fun AlbumGrid(
         val colorScheme = MaterialTheme.colorScheme
         val captionBackground = remember { Animatable(colorScheme.surface) }
 
-        AsyncImage(
-          modifier = Modifier.fillMaxSize(),
-          model = ImageRequest.Builder(LocalContext.current)
-            .data(item.placeholderImageUrl)
-            .memoryCacheKey(item.placeholderImageUrl)
-            .crossfade(300)
-            .allowHardware(false)
-            .listener(onSuccess = { _, result ->
-              scope.launch {
-                val accent = result.drawable.extractColor()
-                if (accent != null) {
-                  captionBackground.animateTo(accent)
+        ZoomOverlay {
+          AsyncImage(
+            modifier = Modifier.fillMaxSize(),
+            model = ImageRequest.Builder(LocalContext.current)
+              .data(item.placeholderImageUrl)
+              .memoryCacheKey(item.placeholderImageUrl)
+              .crossfade(300)
+              .allowHardware(false)
+              .listener(onSuccess = { _, result ->
+                scope.launch {
+                  val accent = result.drawable.extractColor()
+                  if (accent != null) {
+                    captionBackground.animateTo(accent)
+                  }
                 }
-              }
-            })
-            .build(),
-          contentDescription = item.caption,
-          contentScale = ContentScale.Crop,
-        )
+              })
+              .build(),
+            contentDescription = item.caption,
+            contentScale = ContentScale.Crop,
+          )
+        }
         Box(
           Modifier
             .matchParentSize()
