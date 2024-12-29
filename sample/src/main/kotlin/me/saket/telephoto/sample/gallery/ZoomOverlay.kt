@@ -4,11 +4,17 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.view.ViewGroup
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.RememberObserver
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -16,8 +22,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCompositionContext
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -25,7 +32,10 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.round
 import me.saket.telephoto.zoomable.ZoomSpec
+import me.saket.telephoto.zoomable.ZoomableState
 import me.saket.telephoto.zoomable.rememberZoomableState
 import me.saket.telephoto.zoomable.zoomable
 
@@ -37,9 +47,10 @@ import me.saket.telephoto.zoomable.zoomable
 @Composable
 fun ZoomOverlay(
   modifier: Modifier = Modifier,
+  overlayDecoration: ZoomOverlayDecoration = ZoomOverlayDecoration.Default,
   content: @Composable () -> Unit,
 ) {
-  val zoomableState = rememberZoomableState(
+  val zoomableState: ZoomableState = rememberZoomableState(
     zoomSpec = ZoomSpec(
       maxZoomFactor = 1f,
       preventOverOrUnderZoom = false,
@@ -78,10 +89,49 @@ fun ZoomOverlay(
     val overlay = rememberDecorOverlay()
     val boundsInWindow = remember { coordinates!!.boundsInWindow() }
     overlay.setContent {
-      Canvas(Modifier.fillMaxSize()) {
-        translate(boundsInWindow.left, boundsInWindow.top) {
-          drawLayer(graphicsLayer)
+      Box(Modifier.fillMaxSize()) {
+        overlayDecoration.Decorate {
+          val density = LocalDensity.current
+          Canvas(
+            Modifier
+              .size(
+                width = density.run { boundsInWindow.width.toDp() },
+                height = density.run { boundsInWindow.height.toDp() },
+              )
+              .offset { boundsInWindow.topLeft.round() }
+          ) {
+            drawLayer(graphicsLayer)
+          }
         }
+      }
+    }
+  }
+}
+
+@Stable
+fun interface ZoomOverlayDecoration {
+  @Composable
+  fun Decorate(innerContent: @Composable () -> Unit)
+
+  companion object {
+    val Default = ZoomOverlayDecoration { innerContent ->
+      // todo: fade out when the content is released.
+      val animatedAlpha = remember { Animatable(initialValue = 0f) }
+      LaunchedEffect(Unit) {
+        animatedAlpha.animateTo(
+          targetValue = 0.5f,
+          animationSpec = tween(600),
+        )
+      }
+
+      Box(
+        Modifier
+          .fillMaxSize()
+          .drawBehind {
+            drawRect(Color.Black, alpha = animatedAlpha.value)
+          }
+      ) {
+        innerContent()
       }
     }
   }
