@@ -46,7 +46,7 @@ class SampleActivity : AppCompatActivity() {
         // Photo by Anita Austvika on https://unsplash.com/photos/yFxAORZcJQk.
         MediaItem.Image(
           fullSizedUrl = "https://images.unsplash.com/photo-1678465952838-c9d7f5daaa65",
-          placeholderImageUrl = "https://images.unsplash.com/photo-1678465952838-c9d7f5daaa65?w=100",
+          placeholderImageUrl = "https://images.unsplash.com/photo-1678465952838-c9d7f5daaa65?w=300",
           caption = "Breakfast",
         ),
         // Photos by Romain Guy on https://www.flickr.com/photos/romainguy/.
@@ -62,7 +62,7 @@ class SampleActivity : AppCompatActivity() {
         ),
         MediaItem.Image(
           fullSizedUrl = "https://live.staticflickr.com/6024/5911366388_600e7e6734_o_d.jpg",
-          placeholderImageUrl = "https://i.imgur.com/bQtqkj6.jpg",
+          placeholderImageUrl = "https://i.imgur.com/TUpdBdi.jpeg",
           caption = "Sierra Sunset",
         ),
       )
