@@ -89,8 +89,9 @@ fun ZoomOverlay(
 @Composable
 private fun rememberDecorOverlay(): ComposeView {
   val context = LocalContext.current
-  val activity = remember(context) { context.findActivity() }
-  val decorView = remember(activity) { activity.window.decorView as ViewGroup }
+  val decorView = remember(context) {
+    context.findActivity().window.decorView as ViewGroup
+  }
 
   // Note to self: other alternatives considered:
   // - Dialog: animation weren't very smooth for some reason.
