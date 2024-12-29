@@ -13,6 +13,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCompositionContext
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -96,10 +97,12 @@ private fun rememberDecorOverlay(): ComposeView {
   // Note to self: other alternatives considered:
   // - Dialog: animation weren't very smooth for some reason.
   // - ViewGroupOverlay: invalidations/redraws were challenging.
+  val parentComposition = rememberCompositionContext()
   return remember {
     object : RememberObserver {
-      val overlayView = ComposeView(decorView.context).apply {
-        layoutParams = ViewGroup.LayoutParams(
+      val overlayView = ComposeView(decorView.context).also {
+        it.setParentCompositionContext(parentComposition)
+        it.layoutParams = ViewGroup.LayoutParams(
           ViewGroup.LayoutParams.MATCH_PARENT,
           ViewGroup.LayoutParams.MATCH_PARENT
         )
