@@ -66,7 +66,6 @@ fun ZoomOverlay(
 
   Box(
     Modifier
-      .onPlaced { coordinates = it }
       .drawWithContent {
         graphicsLayer.record {
           this@drawWithContent.drawContent()
@@ -77,8 +76,8 @@ fun ZoomOverlay(
         //}
       }
       .zoomable(zoomableState, clipToBounds = false)
-      // todo: explain why this is not the first node?
-      .then(modifier),
+      .then(modifier)
+      .onPlaced { coordinates = it },
     propagateMinConstraints = true,
   ) {
     content()
