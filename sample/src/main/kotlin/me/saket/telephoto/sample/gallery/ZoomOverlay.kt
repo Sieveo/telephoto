@@ -42,20 +42,19 @@ import me.saket.telephoto.zoomable.zoomable
 // todo:
 //  - this blocks click events
 //  - try converting this into a modifier.
-//  - provide the zoomable state to the content
 //  - settling animation does not resume if it's interrupted by a tap.
 @Composable
 fun ZoomOverlay(
   modifier: Modifier = Modifier,
-  overlayDecoration: ZoomOverlayDecoration = ZoomOverlayDecoration.Default,
-  content: @Composable () -> Unit,
-) {
-  val zoomableState: ZoomableState = rememberZoomableState(
+  zoomableState: ZoomableState = rememberZoomableState(
     zoomSpec = ZoomSpec(
       maxZoomFactor = 1f,
       preventOverOrUnderZoom = false,
     ),
-  )
+  ),
+  overlayDecoration: ZoomOverlayDecoration = ZoomOverlayDecoration.Default,
+  content: @Composable () -> Unit,
+) {
   val isZoomedIn by remember {
     derivedStateOf {
       zoomableState.contentTransformation.scaleMetadata.userZoom > 1f
