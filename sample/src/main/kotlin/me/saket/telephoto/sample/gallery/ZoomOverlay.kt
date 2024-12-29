@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.RememberObserver
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -21,6 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCompositionContext
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
@@ -34,6 +36,7 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.round
+import kotlinx.coroutines.flow.collectLatest
 import me.saket.telephoto.zoomable.ZoomSpec
 import me.saket.telephoto.zoomable.ZoomableState
 import me.saket.telephoto.zoomable.rememberZoomableState
@@ -46,7 +49,7 @@ import me.saket.telephoto.zoomable.zoomable
 @Composable
 fun ZoomOverlay(
   modifier: Modifier = Modifier,
-  zoomableState: ZoomableState = rememberZoomableState(
+  state: ZoomableState = rememberZoomableState(
     zoomSpec = ZoomSpec(
       maxZoomFactor = 1f,
       preventOverOrUnderZoom = false,
@@ -55,9 +58,13 @@ fun ZoomOverlay(
   overlayDecoration: ZoomOverlayDecoration = ZoomOverlayDecoration.Default,
   content: @Composable () -> Unit,
 ) {
+  check(state.zoomSpec.maxZoomFactor == 1f) {
+    "The max zoom factor must be 1f to ensure the overlay resets when a zoom gesture is released."
+  }
+
   val isZoomedIn by remember {
     derivedStateOf {
-      zoomableState.contentTransformation.scaleMetadata.userZoom > 1f
+      state.contentTransformation.scaleMetadata.userZoom > 1f
     }
   }
 
@@ -75,7 +82,11 @@ fun ZoomOverlay(
         drawLayer(graphicsLayer)
         //}
       }
-      .zoomable(zoomableState, clipToBounds = false)
+      .zoomable(
+        state = state,
+        clipToBounds = false,
+        onDoubleClick = { _, _ -> }, // todo: make this nullable.
+      )
       .then(modifier)
       .onPlaced { coordinates = it },
     propagateMinConstraints = true,
@@ -88,7 +99,7 @@ fun ZoomOverlay(
     val boundsInWindow = remember { coordinates!!.boundsInWindow() }
     overlay.setContent {
       Box(Modifier.fillMaxSize()) {
-        overlayDecoration.Decorate {
+        overlayDecoration.Decorate(state) {
           val density = LocalDensity.current
           Canvas(
             Modifier
@@ -109,17 +120,18 @@ fun ZoomOverlay(
 @Stable
 fun interface ZoomOverlayDecoration {
   @Composable
-  fun Decorate(innerContent: @Composable () -> Unit)
+  fun Decorate(state: ZoomableState, innerContent: @Composable () -> Unit)
 
   companion object {
-    val Default = ZoomOverlayDecoration { innerContent ->
-      // todo: fade out when the content is released.
+    val Default = ZoomOverlayDecoration { state, innerContent ->
       val animatedAlpha = remember { Animatable(initialValue = 0f) }
-      LaunchedEffect(Unit) {
-        animatedAlpha.animateTo(
-          targetValue = 0.5f,
-          animationSpec = tween(600),
-        )
+      LaunchedEffect(state) {
+        snapshotFlow { state.isAnimationRunning }.collectLatest { isSettling ->
+          animatedAlpha.animateTo(
+            targetValue = if (isSettling) 0f else 0.4f,
+            animationSpec = if (isSettling) ZoomableState.DefaultZoomAnimationSpec else tween(600),
+          )
+        }
       }
 
       Box(
