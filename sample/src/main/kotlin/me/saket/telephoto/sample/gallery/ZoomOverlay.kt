@@ -80,15 +80,16 @@ fun ZoomOverlay(
           invalidationTrigger++
         }
         if (!isZoomedIn) {
-        drawLayer(graphicsLayer)
+          drawLayer(graphicsLayer)
+        }
       }
+      .onPlaced { coordinates = it }
       .zoomable(
         state = state,
         clipToBounds = false,
         onDoubleClick = { _, _ -> }, // todo: make this nullable.
       )
-      .then(modifier)
-      .onPlaced { coordinates = it },
+      .then(modifier),
     propagateMinConstraints = true,
   ) {
     content()
