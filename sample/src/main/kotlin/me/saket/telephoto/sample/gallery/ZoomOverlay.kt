@@ -62,15 +62,14 @@ fun ZoomOverlay(
     "The max zoom factor must be 1f to ensure the overlay resets when a zoom gesture is released."
   }
 
+  val graphicsLayer = rememberGraphicsLayer()
+  var coordinates: LayoutCoordinates? by remember { mutableStateOf(null) }
+  var invalidationTrigger by remember { mutableIntStateOf(0) }
   val isZoomedIn by remember {
     derivedStateOf {
       state.contentTransformation.scaleMetadata.userZoom > 1f
     }
   }
-
-  val graphicsLayer = rememberGraphicsLayer()
-  var coordinates: LayoutCoordinates? by remember { mutableStateOf(null) }
-  var invalidationTrigger by remember { mutableIntStateOf(0) }
 
   Box(
     Modifier
