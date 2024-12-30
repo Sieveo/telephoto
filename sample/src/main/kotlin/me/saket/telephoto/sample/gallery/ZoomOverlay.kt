@@ -55,7 +55,7 @@ fun ZoomOverlay(
       preventOverOrUnderZoom = false,
     ),
   ),
-  overlayDecoration: ZoomOverlayDecoration = ZoomOverlayDecoration.Default,
+  overlayDecoration: ZoomOverlayDecoration = ZoomOverlayDecoration.scrim(),
   content: @Composable () -> Unit,
 ) {
   check(state.zoomSpec.maxZoomFactor == 1f) {
@@ -126,22 +126,29 @@ fun interface ZoomOverlayDecoration {
   fun Decorate(state: ZoomableState, innerContent: @Composable () -> Unit)
 
   companion object {
-    val Default = ZoomOverlayDecoration { state, innerContent ->
+    @Stable
+    fun scrim(
+      color: Color = Color.Black.copy(alpha = 0.4f)
+    ): ZoomOverlayDecoration = Scrim(color)
+  }
+
+  private data class Scrim(val color: Color) : ZoomOverlayDecoration {
+    @Composable
+    override fun Decorate(state: ZoomableState, innerContent: @Composable () -> Unit) {
       val animatedAlpha = remember { Animatable(initialValue = 0f) }
       LaunchedEffect(state) {
         snapshotFlow { state.isAnimationRunning }.collectLatest { isSettling ->
           animatedAlpha.animateTo(
-            targetValue = if (isSettling) 0f else 0.4f,
+            targetValue = if (isSettling) 0f else 1f,
             animationSpec = if (isSettling) ZoomableState.DefaultZoomAnimationSpec else tween(600),
           )
         }
       }
-
       Box(
         Modifier
           .fillMaxSize()
           .drawBehind {
-            drawRect(Color.Black, alpha = animatedAlpha.value)
+            drawRect(color, alpha = animatedAlpha.value)
           }
       ) {
         innerContent()
