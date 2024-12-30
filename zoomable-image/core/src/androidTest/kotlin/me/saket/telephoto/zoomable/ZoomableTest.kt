@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.LaunchedEffect
@@ -376,6 +377,40 @@ class ZoomableTest {
       state.contentTransformation.scaleMetadata.userZoom == 0.5f
     }
     assertThat(recordedValues.removeAll()).containsOnly(true, false)
+  }
+
+  @Test fun prevent_precision_errors_during_settle_animation() {
+    lateinit var state: ZoomableState
+    var isZoomComplete = false
+
+    rule.setContent {
+      state = rememberZoomableState(
+        ZoomSpec(
+          maxZoomFactor = 1f,
+          preventOverOrUnderZoom = false,
+        )
+      )
+      Box(
+        Modifier
+          .size(200.dp, 300.dp)
+          .zoomable(state)
+          .testTag("content")
+      )
+
+      if (state.contentTransformation.isSpecified) {
+        LaunchedEffect(Unit) {
+          state.zoomTo(0.4495843f)
+          state.real().animateSettlingOfZoomOnGestureEnd()  // Manual settle because preventOverOrUnderZoom=false.
+          isZoomComplete = true
+          println("user zoom after settle? ${state.contentTransformation.scaleMetadata.userZoom}")
+        }
+      }
+    }
+
+    rule.waitUntil { isZoomComplete }
+    rule.runOnIdle {
+      assertThat(state.contentTransformation.scaleMetadata.userZoom).isEqualTo(1f)
+    }
   }
 }
 

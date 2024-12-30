@@ -553,16 +553,15 @@ internal class RealZoomableState internal constructor(
       .userZoom
 
     transformableState.animatedTransform(MutatePriority.Default) {
-      var previous = gestureState.userZoom.value
-      AnimationState(initialValue = previous).animateTo(
+      AnimationState(initialValue = gestureState.userZoom.value).animateTo(
         targetValue = userZoomWithinBounds.value,
         animationSpec = spring()
       ) {
+        val current = calculateGestureState()!!.userZoom.value
         transformBy(
           centroid = gestureState.lastCentroid,
-          zoomChange = if (previous == 0f) 1f else value / previous,
+          zoomChange = if (current == 0f) 1f else value / current,
         )
-        previous = this.value
       }
     }
   }
