@@ -14,10 +14,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.RememberObserver
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCompositionContext
@@ -70,17 +70,17 @@ fun ZoomOverlay(
 
   val graphicsLayer = rememberGraphicsLayer()
   var coordinates: LayoutCoordinates? by remember { mutableStateOf(null) }
+  var invalidationTrigger by remember { mutableIntStateOf(0) }
 
   Box(
     Modifier
       .drawWithContent {
         graphicsLayer.record {
           this@drawWithContent.drawContent()
+          invalidationTrigger++
         }
-        // todo: the content should not be drawn here if it's already being drawn in the overlay.
-        //if (!isZoomedIn) {
+        if (!isZoomedIn) {
         drawLayer(graphicsLayer)
-        //}
       }
       .zoomable(
         state = state,
@@ -109,6 +109,9 @@ fun ZoomOverlay(
               )
               .offset { boundsInWindow.topLeft.round() }
           ) {
+            @Suppress("UNUSED_EXPRESSION")  // https://issuetracker.google.com/issues/386671285
+            invalidationTrigger
+
             drawLayer(graphicsLayer)
           }
         }
