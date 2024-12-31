@@ -44,11 +44,15 @@ import me.saket.telephoto.zoomable.zoomable
 
 // todo:
 //  - this blocks click events
-//  - try converting this into a modifier.
 //  - settling animation does not resume if it's interrupted by a tap.
+//  - create a state class
+//  - add a scope so that consumers can add modifiers extensions.
+//  - haptic feedback
+//    - when zoom starts
+//    - when zoom ends (already works)
+//  - prevent under zoom
 @Composable
-fun ZoomOverlay(
-  modifier: Modifier = Modifier,
+fun Modifier.overlayZoomable(
   state: ZoomableState = rememberZoomableState(
     zoomSpec = ZoomSpec(
       maxZoomFactor = 1f,
@@ -56,8 +60,7 @@ fun ZoomOverlay(
     ),
   ),
   overlayDecoration: ZoomOverlayDecoration = ZoomOverlayDecoration.scrim(),
-  content: @Composable () -> Unit,
-) {
+): Modifier {
   check(state.zoomSpec.maxZoomFactor == 1f) {
     "The max zoom factor must be 1f to ensure the overlay resets when a zoom gesture is released."
   }
@@ -69,29 +72,6 @@ fun ZoomOverlay(
     derivedStateOf {
       state.contentTransformation.scaleMetadata.userZoom > 1f
     }
-  }
-
-  Box(
-    Modifier
-      .drawWithContent {
-        graphicsLayer.record {
-          this@drawWithContent.drawContent()
-          invalidationTrigger++
-        }
-        if (!isZoomedIn) {
-          drawLayer(graphicsLayer)
-        }
-      }
-      .onPlaced { coordinates = it }
-      .zoomable(
-        state = state,
-        clipToBounds = false,
-        onDoubleClick = { _, _ -> }, // todo: make this nullable.
-      )
-      .then(modifier),
-    propagateMinConstraints = true,
-  ) {
-    content()
   }
 
   if (isZoomedIn) {
@@ -118,10 +98,30 @@ fun ZoomOverlay(
       }
     }
   }
+
+  return this
+    .drawWithContent {
+      graphicsLayer.record {
+        this@drawWithContent.drawContent()
+        invalidationTrigger++
+      }
+      if (!isZoomedIn) {
+        drawLayer(graphicsLayer)
+      }
+    }
+    .onPlaced { coordinates = it }
+    .zoomable(
+      state = state,
+      clipToBounds = false,
+      onDoubleClick = { _, _ -> }, // todo: make this nullable.
+    )
 }
 
+// todo: review name.
 @Stable
 fun interface ZoomOverlayDecoration {
+
+  // todo: doc.
   @Composable
   fun Decorate(state: ZoomableState, innerContent: @Composable () -> Unit)
 
