@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -43,78 +44,110 @@ import me.saket.telephoto.zoomable.rememberZoomableState
 import me.saket.telephoto.zoomable.zoomable
 
 // todo:
+//  - move to a library module
 //  - this blocks click events
 //  - settling animation does not resume if it's interrupted by a tap.
-//  - create a state class
-//  - add a scope so that consumers can add modifiers extensions.
 //  - haptic feedback
 //    - when zoom starts
 //    - when zoom ends (already works)
 //  - prevent under zoom
-@Composable
 fun Modifier.overlayZoomable(
-  state: ZoomableState = rememberZoomableState(
+  state: ZoomableOverlayState,
+  overlayDecoration: ZoomOverlayDecoration = ZoomOverlayDecoration.scrim(),
+): Modifier {
+  check(state is RealZoomableOverlayState)
+  state.overlayDecoration = overlayDecoration
+
+  return this
+    .drawWithContent {
+      state.graphicsLayer.record {
+        this@drawWithContent.drawContent()
+        state.invalidationTrigger++ // todo: this reads the state as well instead of only updating it.
+      }
+      if (!state.isZoomedIn) {
+        drawLayer(state.graphicsLayer)
+      }
+    }
+    .onPlaced { state.coordinates = it }
+    .zoomable(
+      state = state.zoomableState,
+      clipToBounds = false,
+      onDoubleClick = { _, _ -> }, // todo: make this nullable.
+    )
+}
+
+// todo: doc.
+@Composable
+fun rememberZoomableOverlayState(): ZoomableOverlayState {
+  val zoomableState = rememberZoomableState(
     zoomSpec = ZoomSpec(
       maxZoomFactor = 1f,
       preventOverOrUnderZoom = false,
     ),
-  ),
-  overlayDecoration: ZoomOverlayDecoration = ZoomOverlayDecoration.scrim(),
-): Modifier {
-  check(state.zoomSpec.maxZoomFactor == 1f) {
-    "The max zoom factor must be 1f to ensure the overlay resets when a zoom gesture is released."
-  }
-
+  )
   val graphicsLayer = rememberGraphicsLayer()
-  var coordinates: LayoutCoordinates? by remember { mutableStateOf(null) }
-  var invalidationTrigger by remember { mutableIntStateOf(0) }
-  val isZoomedIn by remember {
-    derivedStateOf {
-      state.contentTransformation.scaleMetadata.userZoom > 1f
-    }
+  return remember(zoomableState, graphicsLayer) {
+    RealZoomableOverlayState(
+      zoomableState = zoomableState,
+      graphicsLayer = graphicsLayer,
+    )
+  }.also {
+    it.DisplayOverlayEffect()
+  }
+}
+
+// todo: review name.
+interface ZoomableOverlayState {
+  val zoomableState: ZoomableState
+
+  // todo: doc.
+  val isZoomedIn: Boolean
+}
+
+@Stable
+internal class RealZoomableOverlayState(
+  override val zoomableState: ZoomableState,
+  val graphicsLayer: GraphicsLayer
+) : ZoomableOverlayState {
+
+  var coordinates: LayoutCoordinates? by mutableStateOf(null)
+  var invalidationTrigger by mutableIntStateOf(0)
+  lateinit var overlayDecoration: ZoomOverlayDecoration
+
+  override val isZoomedIn: Boolean by derivedStateOf {
+    zoomableState.contentTransformation.scaleMetadata.userZoom > 1f
   }
 
-  if (isZoomedIn) {
-    val overlay = rememberDecorOverlay()
-    val boundsInWindow = remember { coordinates!!.boundsInWindow() }
-    overlay.setContent {
-      Box(Modifier.fillMaxSize()) {
-        overlayDecoration.Decorate(state) {
-          val density = LocalDensity.current
-          Canvas(
-            Modifier
-              .size(
-                width = density.run { boundsInWindow.width.toDp() },
-                height = density.run { boundsInWindow.height.toDp() },
-              )
-              .offset { boundsInWindow.topLeft.round() }
-          ) {
-            @Suppress("UNUSED_EXPRESSION")  // https://issuetracker.google.com/issues/386671285
-            invalidationTrigger
+  @Composable
+  internal fun DisplayOverlayEffect() {
+    if (isZoomedIn) {
+      rememberDecorOverlay().setContent {
+        // todo: the content can scroll while the reset zoom animation is playing.
+        //  should this recalculate the bounds on every coordinate update?
+        val boundsInWindow = remember {
+          // todo: this crashes if the coordinates aren't calculated yet.
+          coordinates!!.boundsInWindow()
+        }
 
-            drawLayer(graphicsLayer)
+        Box(Modifier.fillMaxSize()) {
+          overlayDecoration.Decorate(state = this@RealZoomableOverlayState) {
+            val density = LocalDensity.current
+            Canvas(
+              Modifier
+                .size(
+                  width = density.run { boundsInWindow.width.toDp() },
+                  height = density.run { boundsInWindow.height.toDp() },
+                )
+                .offset { boundsInWindow.topLeft.round() }
+            ) {
+              invalidationTrigger // https://issuetracker.google.com/issues/386671285
+              drawLayer(graphicsLayer)
+            }
           }
         }
       }
     }
   }
-
-  return this
-    .drawWithContent {
-      graphicsLayer.record {
-        this@drawWithContent.drawContent()
-        invalidationTrigger++
-      }
-      if (!isZoomedIn) {
-        drawLayer(graphicsLayer)
-      }
-    }
-    .onPlaced { coordinates = it }
-    .zoomable(
-      state = state,
-      clipToBounds = false,
-      onDoubleClick = { _, _ -> }, // todo: make this nullable.
-    )
 }
 
 // todo: review name.
@@ -123,7 +156,7 @@ fun interface ZoomOverlayDecoration {
 
   // todo: doc.
   @Composable
-  fun Decorate(state: ZoomableState, innerContent: @Composable () -> Unit)
+  fun Decorate(state: ZoomableOverlayState, innerContent: @Composable () -> Unit)
 
   companion object {
     @Stable
@@ -134,10 +167,10 @@ fun interface ZoomOverlayDecoration {
 
   private data class Scrim(val color: Color) : ZoomOverlayDecoration {
     @Composable
-    override fun Decorate(state: ZoomableState, innerContent: @Composable () -> Unit) {
+    override fun Decorate(state: ZoomableOverlayState, innerContent: @Composable () -> Unit) {
       val animatedAlpha = remember { Animatable(initialValue = 0f) }
       LaunchedEffect(state) {
-        snapshotFlow { state.isAnimationRunning }.collectLatest { isSettling ->
+        snapshotFlow { state.zoomableState.isAnimationRunning }.collectLatest { isSettling ->
           animatedAlpha.animateTo(
             targetValue = if (isSettling) 0f else 1f,
             animationSpec = if (isSettling) ZoomableState.DefaultSettleAnimationSpec else tween(600),
