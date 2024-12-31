@@ -9,7 +9,6 @@ import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.animateDecay
 import androidx.compose.animation.core.animateTo
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.splineBasedDecay
 import androidx.compose.foundation.MutatePriority
 import androidx.compose.runtime.Composable
@@ -494,13 +493,7 @@ internal class RealZoomableState internal constructor(
     transformableState.animatedTransform(mutatePriority) {
       AnimationState(initialValue = 0f).animateTo(
         targetValue = 1f,
-        animationSpec = if (animationSpec is SpringSpec<Float>) {
-          // Without a low visibility threshold, spring() makes a huge
-          // jump on its last frame causing a few frames to be dropped.
-          animationSpec.copy(visibilityThreshold = 0.0001f)
-        } else {
-          animationSpec
-        },
+        animationSpec = animationSpec.withMinimalVisibilityThreshold(),
       ) {
         val animatedZoom: ContentZoomFactor = startZoom.copy(
           userZoom = UserZoomFactor(
@@ -555,7 +548,7 @@ internal class RealZoomableState internal constructor(
     transformableState.animatedTransform(MutatePriority.Default) {
       AnimationState(initialValue = gestureState.userZoom.value).animateTo(
         targetValue = userZoomWithinBounds.value,
-        animationSpec = spring()
+        animationSpec = ZoomableState.DefaultSettleAnimationSpec.withMinimalVisibilityThreshold(),
       ) {
         val current = calculateGestureState()!!.userZoom.value
         transformBy(
@@ -640,6 +633,16 @@ internal class RealZoomableState internal constructor(
       } finally {
         isAnimationRunning = false
       }
+    }
+  }
+
+  private fun AnimationSpec<Float>.withMinimalVisibilityThreshold(): AnimationSpec<Float> {
+    return if (this is SpringSpec<Float>) {
+      // Without a low visibility threshold, spring() makes a huge
+      // jump on its last frame causing a few frames to be dropped.
+      copy(visibilityThreshold = 0.0001f)
+    } else {
+      this
     }
   }
 

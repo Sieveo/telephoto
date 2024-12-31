@@ -140,7 +140,7 @@ fun interface ZoomOverlayDecoration {
         snapshotFlow { state.isAnimationRunning }.collectLatest { isSettling ->
           animatedAlpha.animateTo(
             targetValue = if (isSettling) 0f else 1f,
-            animationSpec = if (isSettling) ZoomableState.DefaultZoomAnimationSpec else tween(600),
+            animationSpec = if (isSettling) ZoomableState.DefaultSettleAnimationSpec else tween(600),
           )
         }
       }
