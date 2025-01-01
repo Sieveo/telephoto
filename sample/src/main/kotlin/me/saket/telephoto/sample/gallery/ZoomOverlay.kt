@@ -1,3 +1,5 @@
+@file:Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
+
 package me.saket.telephoto.sample.gallery
 
 import android.app.Activity
@@ -27,8 +29,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
@@ -38,19 +42,21 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.round
 import kotlinx.coroutines.flow.collectLatest
+import me.saket.telephoto.zoomable.HardwareShortcutsSpec
 import me.saket.telephoto.zoomable.ZoomSpec
 import me.saket.telephoto.zoomable.ZoomableState
 import me.saket.telephoto.zoomable.rememberZoomableState
-import me.saket.telephoto.zoomable.zoomable
+import me.saket.telephoto.zoomable.pinchToZoomable
 
 // todo:
 //  - move to a library module
-//  - this blocks click events
 //  - settling animation does not resume if it's interrupted by a tap.
 //  - haptic feedback
 //    - when zoom starts
 //    - when zoom ends (already works)
 //  - prevent under zoom
+//  - test:
+//    - content is clickable
 fun Modifier.overlayZoomable(
   state: ZoomableOverlayState,
   overlayDecoration: ZoomOverlayDecoration = ZoomOverlayDecoration.scrim(),
@@ -69,10 +75,9 @@ fun Modifier.overlayZoomable(
       }
     }
     .onPlaced { state.coordinates = it }
-    .zoomable(
+    .pinchToZoomable(
       state = state.zoomableState,
       clipToBounds = false,
-      onDoubleClick = { _, _ -> }, // todo: make this nullable.
     )
 }
 
@@ -84,6 +89,7 @@ fun rememberZoomableOverlayState(): ZoomableOverlayState {
       maxZoomFactor = 1f,
       preventOverOrUnderZoom = false,
     ),
+    hardwareShortcutsSpec = HardwareShortcutsSpec.Disabled,
   )
   val graphicsLayer = rememberGraphicsLayer()
   return remember(zoomableState, graphicsLayer) {
