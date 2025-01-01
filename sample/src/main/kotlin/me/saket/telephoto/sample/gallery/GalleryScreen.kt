@@ -63,16 +63,16 @@ private fun AlbumGrid(
 ) {
   LazyVerticalGrid(
     modifier = modifier,
-    columns = GridCells.Adaptive(200.dp),
-    contentPadding = PaddingValues(20.dp),
-    verticalArrangement = Arrangement.spacedBy(20.dp),
-    horizontalArrangement = Arrangement.spacedBy(20.dp),
+    columns = GridCells.Adaptive(minSize = 160.dp),
+    contentPadding = PaddingValues(4.dp),
+    verticalArrangement = Arrangement.spacedBy(4.dp),
+    horizontalArrangement = Arrangement.spacedBy(4.dp),
   ) {
     itemsIndexed(items = album.items) { index, item ->
       Box(
         modifier = Modifier
           .fillMaxWidth()
-          .height(300.dp)
+          .height(280.dp)
           .background(MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp))
           .clickable { navigator.goTo(MediaViewerScreenKey(album, initialIndex = index)) }
           .zoomableOverlaidPeek(rememberZoomableOverlayState()),
