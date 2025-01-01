@@ -74,45 +74,44 @@ private fun AlbumGrid(
 ) {
   LazyVerticalGrid(
     modifier = modifier,
-    columns = GridCells.Adaptive(minSize = 140.dp),
-    contentPadding = PaddingValues(4.dp),
-    verticalArrangement = Arrangement.spacedBy(4.dp),
-    horizontalArrangement = Arrangement.spacedBy(4.dp),
+    columns = GridCells.Adaptive(200.dp),
+    contentPadding = PaddingValues(20.dp),
+    verticalArrangement = Arrangement.spacedBy(20.dp),
+    horizontalArrangement = Arrangement.spacedBy(20.dp),
   ) {
     itemsIndexed(items = album.items) { index, item ->
       Box(
         modifier = Modifier
           .fillMaxWidth()
-          .height(200.dp)
+          .height(300.dp)
           .background(MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp))
-          .clickable { navigator.goTo(MediaViewerScreenKey(album, initialIndex = index)) },
+          .clickable { navigator.goTo(MediaViewerScreenKey(album, initialIndex = index)) }
+          .overlayZoomable(rememberZoomableOverlayState()),
         contentAlignment = Alignment.BottomStart
       ) {
         val scope = rememberCoroutineScope()
         val colorScheme = MaterialTheme.colorScheme
         val captionBackground = remember { Animatable(colorScheme.surface) }
 
-        ZoomOverlay {
-          AsyncImage(
-            modifier = Modifier.fillMaxSize(),
-            model = ImageRequest.Builder(LocalContext.current)
-              .data(item.placeholderImageUrl)
-              .memoryCacheKey(item.placeholderImageUrl)
-              .crossfade(300)
-              .allowHardware(false)
-              .listener(onSuccess = { _, result ->
-                scope.launch {
-                  val accent = result.drawable.extractColor()
-                  if (accent != null) {
-                    captionBackground.animateTo(accent)
-                  }
+        AsyncImage(
+          modifier = Modifier.fillMaxSize(),
+          model = ImageRequest.Builder(LocalContext.current)
+            .data(item.placeholderImageUrl)
+            .memoryCacheKey(item.placeholderImageUrl)
+            .crossfade(300)
+            .allowHardware(false)
+            .listener(onSuccess = { _, result ->
+              scope.launch {
+                val accent = result.drawable.extractColor()
+                if (accent != null) {
+                  captionBackground.animateTo(accent)
                 }
-              })
-              .build(),
-            contentDescription = item.caption,
-            contentScale = ContentScale.Crop,
-          )
-        }
+              }
+            })
+            .build(),
+          contentDescription = item.caption,
+          contentScale = ContentScale.Crop,
+        )
         Box(
           Modifier
             .matchParentSize()
