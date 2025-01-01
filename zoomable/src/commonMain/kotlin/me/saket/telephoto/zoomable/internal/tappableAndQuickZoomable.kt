@@ -86,7 +86,7 @@ internal class TappableAndQuickZoomableNode(
 
   private val quickZoomEvents = Channel<QuickZoomEvent>(capacity = Channel.UNLIMITED)
 
-  private val pointerInputNode = SuspendingPointerInputModifierNode {
+  private val pointerInputNode = delegate(SuspendingPointerInputModifierNode {
     coroutineScope {
       launch(start = CoroutineStart.UNDISPATCHED) {
         while (isActive) {
@@ -127,20 +127,12 @@ internal class TappableAndQuickZoomableNode(
         onDoubleTap = if (onDoubleTap != null) {
           { centroid -> onDoubleTap?.invoke(centroid) }
         } else null,
-        onQuickZoom = {
-          if (quickZoomEnabled) {
-            quickZoomEvents.trySend(it)
-          }
-        },
+        onQuickZoom = if (quickZoomEnabled) {
+          { event -> quickZoomEvents.trySend(event) }
+        } else null,
       )
     }
-  }
-
-  init {
-    if (quickZoomEnabled || onDoubleTap != null) {
-      delegate(pointerInputNode)
-    }
-  }
+  })
 
   fun update(
     onPress: (Offset) -> Unit,
@@ -167,12 +159,6 @@ internal class TappableAndQuickZoomableNode(
     this.quickZoomEnabled = quickZoomEnabled
     this.onQuickZoomStopped = onQuickZoomStopped
 
-    if (quickZoomEnabled || onDoubleTap != null) {
-      delegate(pointerInputNode)
-    } else {
-      undelegate(pointerInputNode)
-    }
-
     if (needsReset) {
       this.onTap = onTap
       this.onLongPress = onLongPress
@@ -190,6 +176,12 @@ private suspend fun PointerInputScope.detectTapAndQuickZoomGestures(
   onQuickZoom: ((QuickZoomEvent) -> Unit)?,
 ) {
   awaitEachGesture {
+    if (onTap == null && onLongPress == null && onDoubleTap == null && onQuickZoom == null) {
+      // Nothing to do here. This might not be the best way to ignore a gesture though…
+      awaitFirstDown(pass = PointerEventPass.Final)
+      return@awaitEachGesture
+    }
+
     val firstDown = awaitFirstDown()
     firstDown.consume()
     onPress(firstDown.position)
