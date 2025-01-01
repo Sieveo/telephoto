@@ -54,6 +54,7 @@ import me.saket.telephoto.zoomable.pinchToZoomable
 //  - test:
 //    - content is clickable
 //    - scroll a list of zoomable items (regression test for undelegation of nodes).
+//    - content inside zoomed overlay can update
 fun Modifier.overlayZoomable(
   state: ZoomableOverlayState,
   overlayDecoration: ZoomOverlayDecoration = ZoomOverlayDecoration.scrim(),
@@ -65,7 +66,6 @@ fun Modifier.overlayZoomable(
     .drawWithContent {
       state.graphicsLayer.record {
         this@drawWithContent.drawContent()
-        state.invalidationTrigger++ // todo: this reads the state as well instead of only updating it.
       }
       if (!state.isZoomedIn) {
         drawLayer(state.graphicsLayer)
@@ -114,7 +114,6 @@ internal class RealZoomableOverlayState(
 ) : ZoomableOverlayState {
 
   var coordinates: LayoutCoordinates? by mutableStateOf(null)
-  var invalidationTrigger by mutableIntStateOf(0)
   lateinit var overlayDecoration: ZoomOverlayDecoration
 
   override val isZoomedIn: Boolean by derivedStateOf {
@@ -143,7 +142,6 @@ internal class RealZoomableOverlayState(
                 )
                 .offset { boundsInWindow.topLeft.round() }
             ) {
-              invalidationTrigger // https://issuetracker.google.com/issues/386671285
               drawLayer(graphicsLayer)
             }
           }
