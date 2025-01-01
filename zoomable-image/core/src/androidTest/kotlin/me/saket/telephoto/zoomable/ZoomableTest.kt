@@ -375,9 +375,11 @@ class ZoomableTest {
 
     animatedZoomTriggers.trySend(0.5f)
     rule.waitUntil {
-      state.contentTransformation.scaleMetadata.userZoom == 0.5f
+      state.contentTransformation.scaleMetadata.userZoom == 1f
     }
-    assertThat(recordedValues.removeAll()).containsOnly(true, false)
+    rule.runOnIdle {
+      assertThat(recordedValues.removeAll()).containsOnly(true, false)
+    }
   }
 
   @Test fun prevent_precision_errors_during_settle_animation() {
