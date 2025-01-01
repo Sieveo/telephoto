@@ -30,7 +30,6 @@ import me.saket.telephoto.zoomable.internal.QuickZoomEvent.QuickZoomStopped
 import me.saket.telephoto.zoomable.internal.QuickZoomEvent.Zooming
 import kotlin.math.abs
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.ExperimentalTime
 import kotlin.time.TimeSource
 
 /**
@@ -44,10 +43,10 @@ internal data class TappableAndQuickZoomableElement(
   private val onPress: (Offset) -> Unit,
   private val onTap: ((Offset) -> Unit)?,
   private val onLongPress: ((Offset) -> Unit)?,
-  private val onDoubleTap: (centroid: Offset) -> Unit,
+  private val onDoubleTap: ((centroid: Offset) -> Unit)?,
   private val onQuickZoomStopped: () -> Unit,
   private val transformableState: TransformableState,
-  private val gesturesEnabled: Boolean,
+  private val quickZoomEnabled: Boolean,
 ) : ModifierNodeElement<TappableAndQuickZoomableNode>() {
 
   override fun create(): TappableAndQuickZoomableNode {
@@ -58,7 +57,7 @@ internal data class TappableAndQuickZoomableElement(
       onDoubleTap = onDoubleTap,
       onQuickZoomStopped = onQuickZoomStopped,
       transformableState = transformableState,
-      gesturesEnabled = gesturesEnabled
+      quickZoomEnabled = quickZoomEnabled,
     )
   }
 
@@ -70,7 +69,7 @@ internal data class TappableAndQuickZoomableElement(
       onDoubleTap = onDoubleTap,
       onQuickZoomStopped = onQuickZoomStopped,
       transformableState = transformableState,
-      gesturesEnabled = gesturesEnabled,
+      quickZoomEnabled = quickZoomEnabled,
     )
   }
 }
@@ -79,15 +78,15 @@ internal class TappableAndQuickZoomableNode(
   private var onPress: (Offset) -> Unit,
   private var onTap: ((Offset) -> Unit)?,
   private var onLongPress: ((Offset) -> Unit)?,
-  private var onDoubleTap: (centroid: Offset) -> Unit,
+  private var onDoubleTap: ((centroid: Offset) -> Unit)?,
   private var onQuickZoomStopped: () -> Unit,
   private var transformableState: TransformableState,
-  private var gesturesEnabled: Boolean,
+  private var quickZoomEnabled: Boolean,
 ) : DelegatingNode() {
 
   private val quickZoomEvents = Channel<QuickZoomEvent>(capacity = Channel.UNLIMITED)
 
-  private val pointerInputNode = delegate(SuspendingPointerInputModifierNode {
+  private val pointerInputNode = SuspendingPointerInputModifierNode {
     coroutineScope {
       launch(start = CoroutineStart.UNDISPATCHED) {
         while (isActive) {
@@ -125,28 +124,32 @@ internal class TappableAndQuickZoomableNode(
         onLongPress = if (onLongPress != null) {
           { offset -> onLongPress?.invoke(offset) }
         } else null,
-        onDoubleTap = {
-          if (gesturesEnabled) {
-            onDoubleTap(it)
-          }
-        },
+        onDoubleTap = if (onDoubleTap != null) {
+          { centroid -> onDoubleTap?.invoke(centroid) }
+        } else null,
         onQuickZoom = {
-          if (gesturesEnabled) {
+          if (quickZoomEnabled) {
             quickZoomEvents.trySend(it)
           }
         },
       )
     }
-  })
+  }
+
+  init {
+    if (quickZoomEnabled || onDoubleTap != null) {
+      delegate(pointerInputNode)
+    }
+  }
 
   fun update(
     onPress: (Offset) -> Unit,
     onTap: ((Offset) -> Unit)?,
     onLongPress: ((Offset) -> Unit)?,
-    onDoubleTap: (centroid: Offset) -> Unit,
+    onDoubleTap: ((centroid: Offset) -> Unit)?,
     onQuickZoomStopped: () -> Unit,
     transformableState: TransformableState,
-    gesturesEnabled: Boolean,
+    quickZoomEnabled: Boolean,
   ) {
     // This node should be reset if:
     // - Nullable args to detectTapAndQuickZoomGestures() go from not-defined to
@@ -154,14 +157,21 @@ internal class TappableAndQuickZoomableNode(
     // - The entire gesture state is changed.
     val needsReset = (this.onTap == null) != (onTap == null) ||
       (this.onLongPress == null) != (onLongPress == null) ||
+      (this.onDoubleTap == null) != (onDoubleTap == null) ||
       (this.transformableState != transformableState)
 
     // These are captured as references inside callbacks to detectTapAndQuickZoomGestures,
     // so there's no need to reset pointer input handling.
     this.onPress = onPress
     this.onDoubleTap = onDoubleTap
-    this.gesturesEnabled = gesturesEnabled
+    this.quickZoomEnabled = quickZoomEnabled
     this.onQuickZoomStopped = onQuickZoomStopped
+
+    if (quickZoomEnabled || onDoubleTap != null) {
+      delegate(pointerInputNode)
+    } else {
+      undelegate(pointerInputNode)
+    }
 
     if (needsReset) {
       this.onTap = onTap
@@ -172,13 +182,12 @@ internal class TappableAndQuickZoomableNode(
   }
 }
 
-@OptIn(ExperimentalTime::class)
 private suspend fun PointerInputScope.detectTapAndQuickZoomGestures(
   onPress: (Offset) -> Unit,
   onTap: ((Offset) -> Unit)?,
   onLongPress: ((Offset) -> Unit)?,
-  onDoubleTap: (centroid: Offset) -> Unit,
-  onQuickZoom: (QuickZoomEvent) -> Unit,
+  onDoubleTap: ((centroid: Offset) -> Unit)?,
+  onQuickZoom: ((QuickZoomEvent) -> Unit)?,
 ) {
   awaitEachGesture {
     val firstDown = awaitFirstDown()
@@ -201,7 +210,9 @@ private suspend fun PointerInputScope.detectTapAndQuickZoomGestures(
     }
 
     if (firstUp != null) {
-      val secondDown = awaitSecondDown(firstUp = firstUp)
+      val secondDown = if (onDoubleTap != null) {
+        awaitSecondDown(firstUp = firstUp)
+      } else null
       val secondDownTime = TimeSource.Monotonic.markNow()
       secondDown?.consume()
 
@@ -209,7 +220,7 @@ private suspend fun PointerInputScope.detectTapAndQuickZoomGestures(
         // No valid second tap started.
         onTap?.invoke(firstUp.position)
 
-      } else if (areWithinTouchTargetSize(firstUp, secondDown)) {
+      } else if (areWithinTouchTargetSize(firstUp, secondDown) && onQuickZoom != null) {
         val dragStart = awaitVerticalTouchSlopOrCancellation(
           pointerId = secondDown.id,
           //pointerType = secondDown.type,  // https://issuetracker.google.com/u/0/issues/348970843
@@ -225,7 +236,7 @@ private suspend fun PointerInputScope.detectTapAndQuickZoomGestures(
           onQuickZoom(QuickZoomStopped)
 
         } else if (secondDownTime.elapsedNow() < viewConfiguration.doubleTapTimeoutMillis.milliseconds) {
-          onDoubleTap(secondDown.position)
+          onDoubleTap!!(secondDown.position)
         }
       }
     }

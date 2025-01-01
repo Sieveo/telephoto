@@ -49,8 +49,36 @@ fun Modifier.zoomable(
   onClick: ((Offset) -> Unit)? = null,
   onLongClick: ((Offset) -> Unit)? = null,
   clipToBounds: Boolean = true,
-  onDoubleClick: DoubleClickToZoomListener = DoubleClickToZoomListener.cycle(),
+  onDoubleClick: DoubleClickToZoomListener? = DoubleClickToZoomListener.cycle(),
 ): Modifier {
+  check(state is RealZoomableState)
+  return this.zoomable(
+    state = state,
+    pinchToZoomEnabled = enabled,
+    quickZoomEnabled = enabled,
+    onClick = onClick,
+    onLongClick = onLongClick,
+    clipToBounds = clipToBounds,
+    onDoubleClick = onDoubleClick,
+  )
+}
+
+private fun Modifier.zoomable(
+  state: ZoomableState,
+  pinchToZoomEnabled: Boolean = true,
+  quickZoomEnabled: Boolean = true,
+  onClick: ((Offset) -> Unit)? = null,
+  onLongClick: ((Offset) -> Unit)? = null,
+  clipToBounds: Boolean = true,
+  onDoubleClick: DoubleClickToZoomListener? = DoubleClickToZoomListener.cycle(),
+): Modifier {
+  if (pinchToZoomEnabled && !quickZoomEnabled) {
+    // Note to self: this function isn't public because it feels weird to
+    // have click listeners that will only work if quickZoomEnabled is true.
+    check(onClick == null)
+    check(onLongClick == null)
+  }
+
   check(state is RealZoomableState)
   return this
     .thenIf(clipToBounds) {
@@ -60,7 +88,8 @@ fun Modifier.zoomable(
     .then(
       ZoomableElement(
         state = state,
-        enabled = enabled,
+        pinchToZoomEnabled = pinchToZoomEnabled,
+        quickZoomEnabled = quickZoomEnabled,
         onClick = onClick,
         onLongClick = onLongClick,
         onDoubleClick = onDoubleClick,
@@ -74,6 +103,21 @@ fun Modifier.zoomable(
     .thenIf(state.autoApplyTransformations) {
       Modifier.applyTransformation { state.contentTransformation }
     }
+}
+
+internal fun Modifier.pinchToZoomable(
+  state: ZoomableState,
+  clipToBounds: Boolean = true,
+): Modifier {
+  return this.zoomable(
+    state = state,
+    pinchToZoomEnabled = true,
+    quickZoomEnabled = false,
+    onClick = null,
+    onLongClick = null,
+    onDoubleClick = null,
+    clipToBounds = clipToBounds,
+  )
 }
 
 @Deprecated("Kept for binary compatibility", level = DeprecationLevel.HIDDEN)
@@ -96,15 +140,17 @@ fun Modifier.zoomable(
 
 private data class ZoomableElement(
   private val state: RealZoomableState,
-  private val enabled: Boolean,
+  private val pinchToZoomEnabled: Boolean,
+  private val quickZoomEnabled: Boolean,
   private val onClick: ((Offset) -> Unit)?,
   private val onLongClick: ((Offset) -> Unit)?,
-  private val onDoubleClick: DoubleClickToZoomListener,
+  private val onDoubleClick: DoubleClickToZoomListener?,
 ) : ModifierNodeElement<ZoomableNode>() {
 
   override fun create(): ZoomableNode = ZoomableNode(
     state = state,
-    enabled = enabled,
+    pinchToZoomEnabled = pinchToZoomEnabled,
+    quickZoomEnabled = quickZoomEnabled,
     onClick = onClick,
     onLongClick = onLongClick,
     suspendableOnDoubleClick = onDoubleClick,
@@ -113,7 +159,8 @@ private data class ZoomableElement(
   override fun update(node: ZoomableNode) {
     node.update(
       state = state,
-      enabled = enabled,
+      pinchToZoomEnabled = pinchToZoomEnabled,
+      quickZoomEnabled = quickZoomEnabled,
       onClick = onClick,
       onLongClick = onLongClick,
       onDoubleClick = onDoubleClick,
@@ -123,7 +170,8 @@ private data class ZoomableElement(
   override fun InspectorInfo.inspectableProperties() {
     name = "zoomable"
     properties["state"] = state
-    properties["enabled"] = enabled
+    properties["pinchToZoomEnabled"] = pinchToZoomEnabled
+    properties["quickZoomEnabled"] = quickZoomEnabled
     properties["onClick"] = onClick
     properties["onLongClick"] = onLongClick
     properties["onDoubleClick"] = onDoubleClick
@@ -133,8 +181,9 @@ private data class ZoomableElement(
 @OptIn(ExperimentalFoundationApi::class)
 private class ZoomableNode(
   private var state: RealZoomableState,
-  private var suspendableOnDoubleClick: DoubleClickToZoomListener,
-  enabled: Boolean,
+  private var suspendableOnDoubleClick: DoubleClickToZoomListener?,
+  pinchToZoomEnabled: Boolean,
+  quickZoomEnabled: Boolean,
   onClick: ((Offset) -> Unit)?,
   onLongClick: ((Offset) -> Unit)?,
 ) : DelegatingNode(), CompositionLocalConsumerModifierNode {
@@ -148,7 +197,7 @@ private class ZoomableNode(
   }
   val onDoubleClick: (centroid: Offset) -> Unit = { centroid ->
     coroutineScope.launch {
-      suspendableOnDoubleClick.onDoubleClick(state, centroid)
+      suspendableOnDoubleClick!!.onDoubleClick(state, centroid)
     }
   }
   val onQuickZoomStopped = {
@@ -173,19 +222,19 @@ private class ZoomableNode(
   }
 
   private val tappableAndQuickZoomableNode = TappableAndQuickZoomableElement(
-    gesturesEnabled = enabled,
+    quickZoomEnabled = quickZoomEnabled,
     transformableState = state.transformableState,
     onPress = onPress,
     onTap = onClick,
     onLongPress = onLongClick,
-    onDoubleTap = onDoubleClick,
+    onDoubleTap = if (suspendableOnDoubleClick == null) null else onDoubleClick,
     onQuickZoomStopped = onQuickZoomStopped,
   ).create()
 
   private val transformableNode = TransformableElement(
     state = state.transformableState,
     canPan = state::canConsumePanChange,
-    enabled = enabled,
+    enabled = pinchToZoomEnabled,
     onTransformStopped = onTransformStopped,
     lockRotationOnZoomPan = false,
   ).create()
@@ -198,10 +247,11 @@ private class ZoomableNode(
 
   fun update(
     state: RealZoomableState,
-    enabled: Boolean,
+    pinchToZoomEnabled: Boolean,
+    quickZoomEnabled: Boolean,
     onClick: ((Offset) -> Unit)?,
     onLongClick: ((Offset) -> Unit)?,
-    onDoubleClick: DoubleClickToZoomListener,
+    onDoubleClick: DoubleClickToZoomListener?,
   ) {
     if (this.state != state) {
       // Note to self: when the state is updated, the delegated
@@ -213,17 +263,17 @@ private class ZoomableNode(
       state = state.transformableState,
       canPan = state::canConsumePanChange,
       lockRotationOnZoomPan = false,
-      enabled = enabled,
+      enabled = pinchToZoomEnabled,
       onTransformStopped = onTransformStopped,
     )
     tappableAndQuickZoomableNode.update(
       onPress = onPress,
       onTap = onClick,
       onLongPress = onLongClick,
-      onDoubleTap = this.onDoubleClick,
+      onDoubleTap = if (onDoubleClick == null) null else this.onDoubleClick,
       onQuickZoomStopped = onQuickZoomStopped,
       transformableState = state.transformableState,
-      gesturesEnabled = enabled,
+      quickZoomEnabled = quickZoomEnabled,
     )
   }
 }

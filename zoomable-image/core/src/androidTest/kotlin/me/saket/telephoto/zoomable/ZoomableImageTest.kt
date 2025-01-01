@@ -960,10 +960,9 @@ class ZoomableImageTest {
 
   @Test fun gestures_are_ignored_when_gestures_are_disabled() {
     var state: ZoomableImageState? = null
-    fun zoomFraction() = state!!.zoomableState.zoomFraction
-
     var onClickCalled = false
     var onLongClickCalled = false
+    var onDoubleClickCalled = false
 
     rule.setContent {
       ZoomableImage(
@@ -978,15 +977,13 @@ class ZoomableImageTest {
         gesturesEnabled = false,
         onClick = { onClickCalled = true },
         onLongClick = { onLongClickCalled = true },
+        onDoubleClick = { _, _ -> onDoubleClickCalled = true },
       )
     }
 
     rule.onNodeWithTag("image").run {
       performTouchInput {
         pinchToZoomInBy(visibleSize.center / 2f)
-      }
-      performTouchInput {
-        doubleClick()
       }
       performTouchInput {
         quickZoomIn()
@@ -1000,7 +997,12 @@ class ZoomableImageTest {
     }
 
     rule.runOnIdle {
-      assertThat(zoomFraction()).isEqualTo(0f)
+      assertThat(state!!.zoomableState.zoomFraction).isEqualTo(0f)
+    }
+
+    rule.onNodeWithTag("image").performTouchInput { doubleClick() }
+    rule.runOnIdle {
+      assertThat(onDoubleClickCalled).isFalse()
     }
 
     rule.onNodeWithTag("image").performTouchInput { longClick() }
@@ -1009,7 +1011,7 @@ class ZoomableImageTest {
     }
 
     rule.onNodeWithTag("image").performTouchInput { click() }
-    rule.mainClock.advanceTimeBy(ViewConfiguration.getLongPressTimeout().toLong())
+    rule.mainClock.advanceTimeBy(ViewConfiguration.getDoubleTapTimeout().toLong())
     rule.runOnIdle {
       assertThat(onClickCalled).isTrue()
     }

@@ -6,6 +6,7 @@ import android.view.ViewConfiguration
 import androidx.compose.animation.core.SnapSpec
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -26,6 +27,7 @@ import androidx.compose.ui.layout.ScaleFactor
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.doubleClick
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToKey
@@ -147,7 +149,8 @@ class ZoomableTest {
 
     val touchSlop = ViewConfiguration.get(rule.activity).scaledTouchSlop
     rule.onNodeWithTag("content").performTouchInput {
-      val distance = Offset(x = 0f, y = 1f) // I should use touchSlop here, but https://issuetracker.google.com/issues/275752829.
+      // I should use touchSlop here, but https://issuetracker.google.com/issues/275752829.
+      val distance = Offset(x = 0f, y = 1f)
       assertThat(distance.getDistance()).isLessThan(touchSlop.toFloat())
       pinch(
         start0 = center,
@@ -402,7 +405,6 @@ class ZoomableTest {
           state.zoomTo(0.4495843f)
           state.real().animateSettlingOfZoomOnGestureEnd()  // Manual settle because preventOverOrUnderZoom=false.
           isZoomComplete = true
-          println("user zoom after settle? ${state.contentTransformation.scaleMetadata.userZoom}")
         }
       }
     }
@@ -410,6 +412,104 @@ class ZoomableTest {
     rule.waitUntil { isZoomComplete }
     rule.runOnIdle {
       assertThat(state.contentTransformation.scaleMetadata.userZoom).isEqualTo(1f)
+    }
+  }
+
+  @Test fun nullability_of_click_listeners_can_be_changed() {
+    lateinit var state: ZoomableState
+    var onClickCount = 0
+    var onLongClickCount = 0
+    var onDoubleClickCount = 0
+
+    var onClick: ((Offset) -> Unit)? by mutableStateOf({ onClickCount++ })
+    var onLongClick: ((Offset) -> Unit)? by mutableStateOf({ onLongClickCount++ })
+    var onDoubleClick: DoubleClickToZoomListener? by mutableStateOf(
+      DoubleClickToZoomListener { _, _ -> onDoubleClickCount++ }
+    )
+
+    rule.setContent {
+      state = rememberZoomableState()
+      Box(
+        Modifier
+          .size(200.dp, 300.dp)
+          .testTag("content")
+          .zoomable(
+            state = state,
+            onClick = onClick,
+            onLongClick = onLongClick,
+            onDoubleClick = onDoubleClick,
+          )
+      )
+    }
+
+    fun sendClicks() {
+      rule.onNodeWithTag("content").performClick()
+      rule.mainClock.advanceTimeBy(ViewConfiguration.getDoubleTapTimeout().toLong())
+
+      rule.onNodeWithTag("content").performTouchInput { longClick() }
+      rule.onNodeWithTag("content").performTouchInput { doubleClick() }
+    }
+
+    sendClicks()
+    rule.runOnIdle {
+      assertThat(onClickCount).isEqualTo(1)
+      assertThat(onLongClickCount).isEqualTo(1)
+      assertThat(onDoubleClickCount).isEqualTo(1)
+    }
+
+    onClick = null
+    sendClicks()
+    rule.runOnIdle {
+      assertThat(onClickCount).isEqualTo(1)
+      assertThat(onLongClickCount).isEqualTo(2)
+      assertThat(onDoubleClickCount).isEqualTo(2)
+    }
+
+    onLongClick = null
+    sendClicks()
+    rule.runOnIdle {
+      assertThat(onClickCount).isEqualTo(1)
+      assertThat(onLongClickCount).isEqualTo(2)
+      assertThat(onDoubleClickCount).isEqualTo(3)
+    }
+
+    onDoubleClick = null
+    sendClicks()
+    rule.runOnIdle {
+      assertThat(onClickCount).isEqualTo(1)
+      assertThat(onLongClickCount).isEqualTo(2)
+      assertThat(onDoubleClickCount).isEqualTo(3)
+    }
+
+    onClick = { onClickCount++ }
+    onLongClick = { onLongClickCount++ }
+    onDoubleClick = DoubleClickToZoomListener { _, _ -> onDoubleClickCount++ }
+
+    sendClicks()
+    rule.runOnIdle {
+      assertThat(onClickCount).isEqualTo(2)
+      assertThat(onLongClickCount).isEqualTo(3)
+      assertThat(onDoubleClickCount).isEqualTo(4)
+    }
+  }
+
+  @Test fun clickable_modifier_can_be_used_when_all_click_listeners_are_null() {
+    var onClickCalled = false
+
+    rule.setContent {
+      val state = rememberZoomableState()
+      Box(
+        Modifier
+          .size(200.dp, 300.dp)
+          .testTag("content")
+          .pinchToZoomable(state)
+          .clickable { onClickCalled = true }
+      )
+    }
+
+    rule.onNodeWithTag("content").performClick()
+    rule.runOnIdle {
+      assertThat(onClickCalled).isTrue()
     }
   }
 }
