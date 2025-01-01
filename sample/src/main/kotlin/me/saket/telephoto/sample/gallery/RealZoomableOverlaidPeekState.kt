@@ -30,13 +30,13 @@ import androidx.compose.ui.unit.round
 import me.saket.telephoto.zoomable.ZoomableState
 
 @Stable
-internal class RealZoomableOverlayState(
+internal class RealZoomableOverlaidPeekState(
   override val zoomableState: ZoomableState,
   val graphicsLayer: GraphicsLayer?
-) : ZoomableOverlayState {
+) : ZoomableOverlaidPeekState {
 
   var coordinates: LayoutCoordinates? by mutableStateOf(null)
-  lateinit var overlayDecoration: ZoomOverlayDecoration
+  lateinit var overlayDecoration: ZoomableOverlaidPeekDecoration
 
   override val isZoomedIn: Boolean by derivedStateOf {
     zoomableState.contentTransformation.scaleMetadata.userZoom > 1f
@@ -55,7 +55,7 @@ internal class RealZoomableOverlayState(
         }
 
         Box(Modifier.fillMaxSize()) {
-          overlayDecoration.Decorate(state = this@RealZoomableOverlayState) {
+          overlayDecoration.Decorate(state = this@RealZoomableOverlaidPeekState) {
             val density = LocalDensity.current
             Canvas(
               Modifier

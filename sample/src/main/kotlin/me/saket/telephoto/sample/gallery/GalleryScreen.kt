@@ -86,7 +86,7 @@ private fun AlbumGrid(
           .height(300.dp)
           .background(MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp))
           .clickable { navigator.goTo(MediaViewerScreenKey(album, initialIndex = index)) }
-          .overlayZoomable(rememberZoomableOverlayState()),
+          .zoomableOverlaidPeek(rememberZoomableOverlayState()),
         contentAlignment = Alignment.BottomStart
       ) {
         val scope = rememberCoroutineScope()

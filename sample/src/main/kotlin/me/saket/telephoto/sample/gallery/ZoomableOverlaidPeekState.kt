@@ -1,6 +1,7 @@
 package me.saket.telephoto.sample.gallery
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.platform.LocalView
@@ -12,11 +13,11 @@ import me.saket.telephoto.zoomable.ZoomableState
 import me.saket.telephoto.zoomable.rememberZoomableState
 
 /**
- * Create a [ZoomableOverlayState] that can be used with
- * [Modifier.overlayZoomable][overlayZoomable].
+ * Create a [ZoomableOverlaidPeekState] that can be used with
+ * [Modifier.overlayZoomable][zoomableOverlaidPeek].
  */
 @Composable
-fun rememberZoomableOverlayState(): ZoomableOverlayState {
+fun rememberZoomableOverlayState(): ZoomableOverlaidPeekState {
   val zoomableState = rememberZoomableState(
     zoomSpec = ZoomSpec(
       maximum = ZoomLimit(factor = 1f, overzoomEffect = OverzoomEffect.NoLimits),
@@ -30,7 +31,7 @@ fun rememberZoomableOverlayState(): ZoomableOverlayState {
     null  // GraphicsLayer does not support SW acceleration.
   }
   return remember(zoomableState, graphicsLayer) {
-    RealZoomableOverlayState(
+    RealZoomableOverlaidPeekState(
       zoomableState = zoomableState,
       graphicsLayer = graphicsLayer,
     )
@@ -39,8 +40,9 @@ fun rememberZoomableOverlayState(): ZoomableOverlayState {
   }
 }
 
-/** State class for [Modifier.overlayZoomable][overlayZoomable]. */
-sealed interface ZoomableOverlayState {
+/** State class for [Modifier.overlayZoomable][zoomableOverlaidPeek]. */
+@Stable
+sealed interface ZoomableOverlaidPeekState {
   val zoomableState: ZoomableState
 
   val isZoomedIn: Boolean
