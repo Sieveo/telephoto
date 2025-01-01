@@ -1,4 +1,4 @@
-package me.saket.telephoto.sample.gallery
+package me.saket.telephoto.zoomable
 
 import android.app.Activity
 import android.content.Context

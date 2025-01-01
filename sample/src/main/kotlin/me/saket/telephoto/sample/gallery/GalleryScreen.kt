@@ -44,6 +44,9 @@ import kotlinx.coroutines.withContext
 import me.saket.telephoto.sample.GalleryScreenKey
 import me.saket.telephoto.sample.MediaViewerScreenKey
 import me.saket.telephoto.sample.R
+import me.saket.telephoto.zoomable.ZoomableOverlaidPeekDecoration
+import me.saket.telephoto.zoomable.rememberZoomableOverlayState
+import me.saket.telephoto.zoomable.zoomableOverlaidPeek
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)

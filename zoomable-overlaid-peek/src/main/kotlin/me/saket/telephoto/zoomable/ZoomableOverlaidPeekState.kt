@@ -1,4 +1,4 @@
-package me.saket.telephoto.sample.gallery
+package me.saket.telephoto.zoomable
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable

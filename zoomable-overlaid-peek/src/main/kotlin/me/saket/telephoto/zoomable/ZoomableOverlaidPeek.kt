@@ -1,6 +1,6 @@
 @file:Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
 
-package me.saket.telephoto.sample.gallery
+package me.saket.telephoto.zoomable
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -23,7 +23,6 @@ import me.saket.telephoto.zoomable.ZoomableState
 import me.saket.telephoto.zoomable.pinchToZoomable
 
 // todo:
-//  - move to a library module
 //  - settling animation does not resume if it's interrupted by a tap.
 //  - see TODOs in RealZoomableOverlaidPeekState.
 //  - test:

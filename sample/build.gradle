@@ -48,6 +48,7 @@ dependencies {
   implementation(projects.flick)
   implementation(projects.zoomableImage.coil)
   implementation(projects.zoomableImage.glide)
+  implementation(projects.zoomableOverlaidPeek)
 
   implementation(libs.androidx.appcompat)
   implementation(libs.androidx.ktx.core)
