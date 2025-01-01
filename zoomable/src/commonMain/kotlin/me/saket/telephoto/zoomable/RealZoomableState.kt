@@ -236,21 +236,24 @@ internal class RealZoomableState internal constructor(
 
       val isZoomingOut = zoomDelta < 1f
       val isZoomingIn = zoomDelta > 1f
-
-      // Apply elasticity if content is being over/under-zoomed.
       val isAtMaxZoom = oldZoom.isAtMaxZoom(zoomSpec.range)
       val isAtMinZoom = oldZoom.isAtMinZoom(zoomSpec.range)
-      val zoomDelta = when {
-        !zoomSpec.preventOverOrUnderZoom -> zoomDelta
-        isZoomingIn && isAtMaxZoom -> 1f + zoomDelta / 250
-        isZoomingOut && isAtMinZoom -> 1f - zoomDelta / 250
-        else -> zoomDelta
+
+      // Apply overzoom effect if content is being over/under-zoomed.
+      val zoomDelta = if (isZoomingIn && isAtMaxZoom || isZoomingOut && isAtMinZoom) {
+        zoomSpec.maximum.overzoomEffect.adjust(zoomDelta)
+      } else {
+        zoomDelta
       }
       val newZoom = ContentZoomFactor(
         baseZoom = inputs.baseZoom,
         userZoom = oldZoom.userZoom * zoomDelta,
       ).let {
-        if (zoomSpec.preventOverOrUnderZoom && (isAtMinZoom || isAtMaxZoom)) {
+        // Disable overzooms after a certain extent.
+        if (
+          (isAtMaxZoom && zoomSpec.maximum.overzoomEffect != OverzoomEffect.NoLimits)
+          || (isAtMinZoom && zoomSpec.minimum.overzoomEffect != OverzoomEffect.NoLimits)
+        ) {
           it.coerceUserZoomIn(
             range = zoomSpec.range,
             leewayPercentForMinZoom = 0.1f,
@@ -447,7 +450,7 @@ internal class RealZoomableState internal constructor(
     // Reset the zoom if needed. An advantage of doing *after* accepting the requested zoom
     // versus limiting the requested zoom above is that repeated over-zoom events (from
     // the keyboard for example) will result in a nice rubber banding effect.
-    if (zoomSpec.preventOverOrUnderZoom && isZoomOutsideRange()) {
+    if (isZoomOutsideRange()) {
       animateSettlingOfZoomOnGestureEnd()
     }
   }
@@ -841,5 +844,20 @@ internal data class ZoomRange(
     // factor if the content is scaled-up by default. This can be tested
     // by setting contentScale = CenterCrop.
     return maxOf(maxZoomAsRatioOfSize, minZoomFactor(baseZoom))
+  }
+}
+
+/** Called when the zoom has reached its max/min limit. */
+private fun OverzoomEffect.adjust(zoomDelta: Float): Float {
+  val isZoomingIn = zoomDelta > 1f
+  return when (this) {
+    is OverzoomEffect.RubberBanding -> {
+      when {
+        isZoomingIn -> 1f + zoomDelta / 250f
+        else -> 1f - zoomDelta / 250
+      }
+    }
+    is OverzoomEffect.NoLimits -> zoomDelta
+    else -> error("unknown overzoom effect = $this")
   }
 }

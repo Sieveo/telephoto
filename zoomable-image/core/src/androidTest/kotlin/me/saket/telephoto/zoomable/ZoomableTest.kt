@@ -4,7 +4,6 @@ package me.saket.telephoto.zoomable
 
 import android.view.ViewConfiguration
 import androidx.compose.animation.core.SnapSpec
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -167,7 +166,6 @@ class ZoomableTest {
   // Regression test for:
   // - https://github.com/saket/telephoto/issues/70
   // - https://github.com/saket/telephoto/issues/72
-  @OptIn(ExperimentalFoundationApi::class)
   @Test fun recycling_of_zoomable_modifier_works() {
     val pageNames = listOf("page_a", "page_b")
     val zoomFractions = mutableMapOf<String, Float?>()
@@ -337,7 +335,7 @@ class ZoomableTest {
       state = rememberZoomableState(
         ZoomSpec(
           maxZoomFactor = 2f,
-          preventOverOrUnderZoom = false,
+          overzoomEffect = OverzoomEffect.NoLimits,
         )
       )
       Box(
@@ -390,7 +388,7 @@ class ZoomableTest {
       state = rememberZoomableState(
         ZoomSpec(
           maxZoomFactor = 1f,
-          preventOverOrUnderZoom = false,
+          overzoomEffect = OverzoomEffect.NoLimits,
         )
       )
       Box(
@@ -403,7 +401,6 @@ class ZoomableTest {
       if (state.contentTransformation.isSpecified) {
         LaunchedEffect(Unit) {
           state.zoomTo(0.4495843f)
-          state.real().animateSettlingOfZoomOnGestureEnd()  // Manual settle because preventOverOrUnderZoom=false.
           isZoomComplete = true
         }
       }

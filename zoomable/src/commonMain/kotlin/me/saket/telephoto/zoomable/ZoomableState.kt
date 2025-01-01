@@ -20,8 +20,6 @@ import kotlin.jvm.JvmName
 /**
  * Create a [ZoomableState] that can be used with [Modifier.zoomable].
  *
- * @param zoomSpec See [ZoomSpec.maxZoomFactor] and [ZoomSpec.preventOverOrUnderZoom].
- *
  * @param autoApplyTransformations Determines whether the resulting scale and translation of pan and zoom
  * gestures should be automatically applied by [Modifier.zoomable] to its content. This can be disabled
  * if your content prefers applying the transformations in a bespoke manner.
@@ -138,7 +136,7 @@ sealed interface ZoomableState {
    *
    * @param zoomFactor Target zoom level for the content. For example, a [zoomFactor] of `2f` will
    * set the content's zoom level to two times its *original* size. This value is internally coerced
-   * to at most [ZoomSpec.maxZoomFactor].
+   * between [ZoomSpec.maximum] and [ZoomSpec.minimum].
    *
    * @param centroid Focal point for this zoom within the content's size. Defaults to the center
    * of the content.

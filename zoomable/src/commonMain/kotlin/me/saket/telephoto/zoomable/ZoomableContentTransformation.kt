@@ -86,8 +86,8 @@ interface ZoomableContentTransformation {
 
     /**
      * Scale applied by the user using zoom gestures. The final scale of the content
-     * is calculated using [initialScale] x [userZoom], and will always be lower or equal
-     * to [ZoomSpec.maxZoomFactor].
+     * is calculated using [initialScale] x [userZoom], and will always between `1.0f`
+     * and [ZoomSpec.maximum] (both inclusive).
      *
      * For example, a `userZoom` of `1.5f` indicates that the content is zoomed 150% from its
      * [initialScale].

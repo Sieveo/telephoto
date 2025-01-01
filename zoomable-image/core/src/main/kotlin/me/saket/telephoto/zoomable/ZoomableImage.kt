@@ -153,7 +153,7 @@ fun ZoomableImage(
             // FlickToDismiss() (and other gesture containers) from accidentally dismissing
             // this image when a quick-zoom gesture is made before the image is fully loaded.
             state = rememberZoomableState(
-              zoomSpec = ZoomSpec(maxZoomFactor = 1f, preventOverOrUnderZoom = false),
+              zoomSpec = ZoomSpec(maxZoomFactor = 1f, overzoomEffect = OverzoomEffect.NoLimits),
               hardwareShortcutsSpec = HardwareShortcutsSpec.Disabled,
               autoApplyTransformations = false,
             ),
