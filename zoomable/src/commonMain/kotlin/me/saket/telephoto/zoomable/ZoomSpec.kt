@@ -31,7 +31,7 @@ class ZoomSpec(
 
   @Deprecated(
     message = "Use OverZoomEffect instead",
-    replaceWith = ReplaceWith("ZoomSpec(maxZoomFactor, overzoomEffect = TODO())")
+    replaceWith = ReplaceWith("ZoomSpec(maxZoomFactor, overzoomEffect = TODO())"),
   )
   constructor(maxZoomFactor: Float, preventOverOrUnderZoom: Boolean) : this(
     maximum = ZoomLimit(
@@ -82,15 +82,20 @@ class ZoomLimit(
 
 @Immutable
 interface OverzoomEffect {
-  /**
-   * Applies a rubber banding effect to zoom gestures when content is zoomed beyond
-   * its limit as a form of visual feedback that the content can't be zoomed any further.
-   */
-  data object RubberBanding : OverzoomEffect
+  companion object {
+    /**
+     * Applies a rubber banding effect to zoom gestures when content is zoomed beyond
+     * its limit as a form of visual feedback that the content can't be zoomed any further.
+     */
+    val RubberBanding: OverzoomEffect = RubberBandingOverzoomEffect
 
-  /**
-   * Does not limit over/under zooms in any manner. Content will zoom in a free-form
-   * manner even when it goes beyond its limit (until the gesture is released).
-   */
-  data object NoLimits : OverzoomEffect
+    /**
+     * Does not limit over/under zooms in any manner. Content will zoom in a free-form
+     * manner even when it goes beyond its limit (until the gesture is released).
+     */
+    val NoLimits: OverzoomEffect = NoLimitsOverzoomEffect
+  }
 }
+
+internal data object RubberBandingOverzoomEffect : OverzoomEffect
+internal data object NoLimitsOverzoomEffect : OverzoomEffect

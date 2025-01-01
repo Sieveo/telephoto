@@ -851,13 +851,13 @@ internal data class ZoomRange(
 private fun OverzoomEffect.adjust(zoomDelta: Float): Float {
   val isZoomingIn = zoomDelta > 1f
   return when (this) {
-    is OverzoomEffect.RubberBanding -> {
+    OverzoomEffect.RubberBanding -> {
       when {
         isZoomingIn -> 1f + zoomDelta / 250f
         else -> 1f - zoomDelta / 250
       }
     }
-    is OverzoomEffect.NoLimits -> zoomDelta
+    OverzoomEffect.NoLimits -> zoomDelta
     else -> error("unknown overzoom effect = $this")
   }
 }
