@@ -19,7 +19,6 @@ import androidx.compose.runtime.RememberObserver
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCompositionContext
@@ -38,6 +37,7 @@ import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.round
 import kotlinx.coroutines.flow.collectLatest
 import me.saket.telephoto.zoomable.HardwareShortcutsSpec
@@ -45,8 +45,8 @@ import me.saket.telephoto.zoomable.OverzoomEffect
 import me.saket.telephoto.zoomable.ZoomLimit
 import me.saket.telephoto.zoomable.ZoomSpec
 import me.saket.telephoto.zoomable.ZoomableState
-import me.saket.telephoto.zoomable.rememberZoomableState
 import me.saket.telephoto.zoomable.pinchToZoomable
+import me.saket.telephoto.zoomable.rememberZoomableState
 
 // todo:
 //  - move to a library module
@@ -55,13 +55,16 @@ import me.saket.telephoto.zoomable.pinchToZoomable
 //    - content is clickable
 //    - scroll a list of zoomable items (regression test for undelegation of nodes).
 //    - content inside zoomed overlay can update
+//    - does not crash when software acceleration is disabled
 fun Modifier.overlayZoomable(
   state: ZoomableOverlayState,
   overlayDecoration: ZoomOverlayDecoration = ZoomOverlayDecoration.scrim(),
 ): Modifier {
   check(state is RealZoomableOverlayState)
   state.overlayDecoration = overlayDecoration
-
+  if (state.graphicsLayer == null) {
+    return this
+  }
   return this
     .drawWithContent {
       state.graphicsLayer.record {
@@ -88,7 +91,11 @@ fun rememberZoomableOverlayState(): ZoomableOverlayState {
     ),
     hardwareShortcutsSpec = HardwareShortcutsSpec.Disabled,
   )
-  val graphicsLayer = rememberGraphicsLayer()
+  val graphicsLayer = if (LocalView.current.isHardwareAccelerated) {
+    rememberGraphicsLayer()
+  } else {
+    null  // GraphicsLayer does not support SW acceleration.
+  }
   return remember(zoomableState, graphicsLayer) {
     RealZoomableOverlayState(
       zoomableState = zoomableState,
@@ -110,7 +117,7 @@ interface ZoomableOverlayState {
 @Stable
 internal class RealZoomableOverlayState(
   override val zoomableState: ZoomableState,
-  val graphicsLayer: GraphicsLayer
+  val graphicsLayer: GraphicsLayer?
 ) : ZoomableOverlayState {
 
   var coordinates: LayoutCoordinates? by mutableStateOf(null)
@@ -122,7 +129,8 @@ internal class RealZoomableOverlayState(
 
   @Composable
   internal fun DisplayOverlayEffect() {
-    if (isZoomedIn) {
+    val graphicsLayer = graphicsLayer
+    if (isZoomedIn && graphicsLayer != null) {
       rememberDecorOverlay().setContent {
         // todo: the content can scroll while the reset zoom animation is playing.
         //  should this recalculate the bounds on every coordinate update?
