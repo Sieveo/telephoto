@@ -29,10 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
@@ -43,6 +41,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.round
 import kotlinx.coroutines.flow.collectLatest
 import me.saket.telephoto.zoomable.HardwareShortcutsSpec
+import me.saket.telephoto.zoomable.OverzoomEffect
+import me.saket.telephoto.zoomable.ZoomLimit
 import me.saket.telephoto.zoomable.ZoomSpec
 import me.saket.telephoto.zoomable.ZoomableState
 import me.saket.telephoto.zoomable.rememberZoomableState
@@ -51,12 +51,9 @@ import me.saket.telephoto.zoomable.pinchToZoomable
 // todo:
 //  - move to a library module
 //  - settling animation does not resume if it's interrupted by a tap.
-//  - haptic feedback
-//    - when zoom starts
-//    - when zoom ends (already works)
-//  - prevent under zoom
 //  - test:
 //    - content is clickable
+//    - scroll a list of zoomable items (regression test for undelegation of nodes).
 fun Modifier.overlayZoomable(
   state: ZoomableOverlayState,
   overlayDecoration: ZoomOverlayDecoration = ZoomOverlayDecoration.scrim(),
@@ -86,8 +83,8 @@ fun Modifier.overlayZoomable(
 fun rememberZoomableOverlayState(): ZoomableOverlayState {
   val zoomableState = rememberZoomableState(
     zoomSpec = ZoomSpec(
-      maxZoomFactor = 1f,
-      preventOverOrUnderZoom = false,
+      maximum = ZoomLimit(factor = 1f, overzoomEffect = OverzoomEffect.NoLimits),
+      minimum = ZoomLimit(factor = 1f, overzoomEffect = OverzoomEffect.RubberBanding),
     ),
     hardwareShortcutsSpec = HardwareShortcutsSpec.Disabled,
   )
