@@ -5,13 +5,8 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.platform.LocalView
-import me.saket.telephoto.zoomable.HardwareShortcutsSpec
-import me.saket.telephoto.zoomable.OverzoomEffect
-import me.saket.telephoto.zoomable.ZoomLimit
-import me.saket.telephoto.zoomable.ZoomSpec
-import me.saket.telephoto.zoomable.ZoomableState
-import me.saket.telephoto.zoomable.rememberZoomableState
 
+// todo: fix this name (also find usages in code comments).
 /**
  * Create a [ZoomableOverlaidPeekState] that can be used with
  * [Modifier.overlayZoomable][zoomableOverlaidPeek].

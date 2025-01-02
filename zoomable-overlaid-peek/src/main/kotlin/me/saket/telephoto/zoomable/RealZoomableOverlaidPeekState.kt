@@ -15,10 +15,12 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.neverEqualPolicy
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCompositionContext
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -26,16 +28,16 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.round
-import me.saket.telephoto.zoomable.ZoomableState
 
 @Stable
 internal class RealZoomableOverlaidPeekState(
   override val zoomableState: ZoomableState,
-  val graphicsLayer: GraphicsLayer?
+  val graphicsLayer: GraphicsLayer?,
 ) : ZoomableOverlaidPeekState {
 
-  var coordinates: LayoutCoordinates? by mutableStateOf(null)
+  var coordinates: LayoutCoordinates? by mutableStateOf(null, neverEqualPolicy())
   lateinit var overlayDecoration: ZoomableOverlaidPeekDecoration
 
   override val isZoomedIn: Boolean by derivedStateOf {
@@ -43,29 +45,27 @@ internal class RealZoomableOverlaidPeekState(
   }
 
   @Composable
+  @Suppress("NAME_SHADOWING")
   internal fun DisplayOverlayEffect() {
     val graphicsLayer = graphicsLayer
     if (isZoomedIn && graphicsLayer != null) {
       rememberDecorOverlay().setContent {
-        // todo: the content can scroll while the reset zoom animation is playing.
-        //  should this recalculate the bounds on every coordinate update?
-        val boundsInWindow = remember {
-          // todo: this crashes if the coordinates aren't calculated yet.
-          coordinates!!.boundsInWindow()
+        val boundsInWindow by remember {
+          derivedStateOf { coordinates?.boundsInWindow() }
         }
 
-        Box(Modifier.fillMaxSize()) {
-          overlayDecoration.Decorate(state = this@RealZoomableOverlaidPeekState) {
-            val density = LocalDensity.current
-            Canvas(
-              Modifier
-                .size(
-                  width = density.run { boundsInWindow.width.toDp() },
-                  height = density.run { boundsInWindow.height.toDp() },
-                )
-                .offset { boundsInWindow.topLeft.round() }
-            ) {
-              drawLayer(graphicsLayer)
+        boundsInWindow?.let { boundsInWindow ->
+          Box(Modifier.fillMaxSize()) {
+            overlayDecoration.Decorate(state = this@RealZoomableOverlaidPeekState) {
+              Canvas(
+                Modifier
+                  .size(boundsInWindow.size.toDpSize())
+                  .offset { boundsInWindow.topLeft.round() }
+              ) {
+                if (isCanvasHardwareAccelerated()) {
+                  drawLayer(graphicsLayer)
+                }
+              }
             }
           }
         }
@@ -108,5 +108,12 @@ private tailrec fun Context.findActivity(): Activity {
     is Activity -> this
     is ContextWrapper -> this.baseContext.findActivity()
     else -> throw IllegalArgumentException("Could not find activity!")
+  }
+}
+
+@Composable
+private fun Size.toDpSize(): DpSize {
+  return with(LocalDensity.current) {
+    DpSize(width = width.toDp(), height = height.toDp())
   }
 }

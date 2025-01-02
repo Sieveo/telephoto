@@ -15,21 +15,17 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.layout.onPlaced
 import kotlinx.coroutines.flow.collectLatest
-import me.saket.telephoto.zoomable.ZoomableState
-import me.saket.telephoto.zoomable.pinchToZoomable
 
 // todo:
 //  - settling animation does not resume if it's interrupted by a tap.
-//  - see TODOs in RealZoomableOverlaidPeekState.
-//  - test:
-//    - content is clickable
-//    - scroll a list of zoomable items (regression test for undelegation of nodes).
-//    - content inside zoomed overlay can update
-//    - does not crash when software acceleration is disabled
 /**
  * Adds a short-lived, overlaid zoom effect reminiscent of Instagram's "peek" feature.
  * The content zooms in while the user interacts with it and, unlike [Modifier.zoomable][me.saket.telephoto.zoomable], automatically returns
@@ -46,11 +42,15 @@ fun Modifier.zoomableOverlaidPeek(
   }
   return this
     .drawWithContent {
+      if (isCanvasHardwareAccelerated()) {
       state.graphicsLayer.record {
         this@drawWithContent.drawContent()
       }
-      if (!state.isZoomedIn) {
+        if (!state.isZoomedIn) {
         drawLayer(state.graphicsLayer)
+      }
+      } else {
+        drawContent()
       }
     }
     .onPlaced { state.coordinates = it }
@@ -63,14 +63,27 @@ fun Modifier.zoomableOverlaidPeek(
 /**
  * Draws decoration around the zoomed content where [Modifier.zoomableOverlaidPeek] is used.
  * Inspired by [TextFieldDecorator].
- * */
+ */
 @Stable
 fun interface ZoomableOverlaidPeekDecoration {
   /**
-   * To allow you to control the placement of the inner (zoomed) content relative to your decorations,
-   * [Modifier.zoomableOverlaidPeek] will pass in [innerContent] to this method. You must not call
-   * [innerContent] more than once.
-   * */
+   * Allows you to render decorations around the inner (zoomed) content. [innerContent] must not
+   * be called more than once.
+   *
+   * This is intended for drawing decorations *behind* the content. To control the appearance of your
+   * content itself during zoom gestures, apply effects directly to the content instead:
+   *
+   * ```kotlin
+   * val state = rememberZoomableOverlayState()
+   * val cornerSize by animateDpAsState(if (state.isZoomedIn) 8.dp else 0.dp)
+   *
+   * Box(
+   *  Modifier
+   *    .zoomableOverlaidPeek(state)
+   *    .clip(RoundedCornerShape(cornerSize))
+   * )
+   * ```
+   */
   @Composable
   fun Decorate(state: ZoomableOverlaidPeekState, innerContent: @Composable () -> Unit)
 
@@ -107,3 +120,8 @@ fun interface ZoomableOverlaidPeekDecoration {
   }
 }
 
+internal fun DrawScope.isCanvasHardwareAccelerated(): Boolean {
+  lateinit var canvas: Canvas
+  drawIntoCanvas { canvas = it }
+  return canvas.nativeCanvas.isHardwareAccelerated
+}

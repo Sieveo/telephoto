@@ -1,0 +1,424 @@
+package me.saket.telephoto.zoomable
+
+import android.app.Activity
+import android.graphics.Bitmap
+import android.view.PixelCopy
+import android.view.ViewConfiguration
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.AbstractComposeView
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.TouchInjectionScope
+import androidx.compose.ui.test.doubleClick
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.pinch
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.toOffset
+import androidx.compose.ui.viewinterop.AndroidView
+import assertk.assertThat
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isTrue
+import com.dropbox.dropshots.Dropshots
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.consumeAsFlow
+import kotlinx.coroutines.test.runTest
+import leakcanary.LeakAssertions
+import me.saket.telephoto.util.CiScreenshotValidator
+import me.saket.telephoto.util.ScreenshotTestActivity
+import org.junit.After
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.TestName
+import org.junit.rules.Timeout
+import java.util.concurrent.Executor
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
+
+class ZoomableOverlaidPeekTest {
+  @get:Rule val rule = createAndroidComposeRule<ScreenshotTestActivity>()
+  @get:Rule val timeout = Timeout.seconds(30)!!
+  @get:Rule val testName = TestName()
+
+  private val screenshotValidator = CiScreenshotValidator(
+    context = { rule.activity },
+    tolerancePercentOnLocal = 0f,
+    tolerancePercentOnCi = 0.01f,
+  )
+  @get:Rule val dropshots = Dropshots(
+    filenameFunc = { it },
+    resultValidator = screenshotValidator,
+  )
+
+  @After fun tearDown() {
+    LeakAssertions.assertNoLeaks()
+  }
+
+  @Test fun zoom_in_and_release() = runTest {
+    lateinit var state: ZoomableOverlaidPeekState
+    rule.setContent {
+      Box(Modifier.fillMaxSize(), Alignment.Center) {
+        state = rememberZoomableOverlayState()
+        Box(
+          Modifier
+            .size(200.dp)
+            .zoomableOverlaidPeek(state)
+            .background(Color.Green)
+            .testTag("content")
+        )
+      }
+    }
+
+    rule.waitForIdle()
+    dropshots.assertSnapshot(rule.activity.takePixelCopyScreenshot(), testName.methodName + "_[before_zoom]")
+
+    rule.onNodeWithTag("content").performTouchInput {
+      val noUpScope = object : TouchInjectionScope by this {
+        override fun up(pointerId: Int) = Unit
+      }
+      noUpScope.pinchToZoomInBy(IntOffset(5, 5))
+    }
+    rule.waitForIdle()
+    assertThat(state.isZoomedIn).isTrue()
+    dropshots.assertSnapshot(rule.activity.takePixelCopyScreenshot(), testName.methodName + "_[during_zoom]")
+
+    rule.onNodeWithTag("content").performTouchInput {
+      this.cancel()
+    }
+    rule.waitUntil { !state.isZoomedIn }
+    dropshots.assertSnapshot(rule.activity.takePixelCopyScreenshot(), testName.methodName + "_[after_zoom]")
+  }
+
+  @Test fun custom_overlay_decoration() = runTest {
+    lateinit var state: ZoomableOverlaidPeekState
+    rule.setContent {
+      Box(Modifier.fillMaxSize(), Alignment.Center) {
+        val overlayDecoration = ZoomableOverlaidPeekDecoration { _, innerContent ->
+          Box(
+            Modifier
+              .fillMaxSize()
+              .background(Brush.linearGradient(listOf(Color(0xFF2be4dc), Color(0xFF243484))))
+          ) {
+            innerContent()
+          }
+        }
+
+        state = rememberZoomableOverlayState()
+        Box(
+          Modifier
+            .size(200.dp)
+            .zoomableOverlaidPeek(state, overlayDecoration)
+            .background(Color.Yellow)
+            .testTag("content")
+        )
+      }
+    }
+
+    rule.waitForIdle()
+    dropshots.assertSnapshot(rule.activity.takePixelCopyScreenshot(), testName.methodName + "_[before_zoom]")
+
+    rule.onNodeWithTag("content").performTouchInput {
+      val noUpScope = object : TouchInjectionScope by this {
+        override fun up(pointerId: Int) = Unit
+      }
+      noUpScope.pinchToZoomInBy(IntOffset(5, 5))
+    }
+    rule.waitForIdle()
+    dropshots.assertSnapshot(rule.activity.takePixelCopyScreenshot(), testName.methodName + "_[during_zoom]")
+
+    rule.onNodeWithTag("content").performTouchInput {
+      this.cancel()
+    }
+    rule.waitUntil { !state.isZoomedIn }
+    dropshots.assertSnapshot(rule.activity.takePixelCopyScreenshot(), testName.methodName + "_[after_zoom]")
+  }
+
+  @OptIn(ExperimentalFoundationApi::class)
+    @Test fun content_does_not_intercept_click_events() {
+    var onClickCount = 0
+    var onLongClickCount = 0
+    var onDoubleClickCount = 0
+
+    rule.setContent {
+      Box(Modifier.fillMaxSize(), Alignment.Center) {
+        Box(
+          Modifier
+            .size(200.dp)
+            .zoomableOverlaidPeek(rememberZoomableOverlayState())
+            .background(Color.Yellow)
+            .combinedClickable(
+              onClick = { onClickCount++ },
+              onLongClick = { onLongClickCount++ },
+              onDoubleClick = { onDoubleClickCount++ },
+            )
+            .testTag("content")
+        )
+      }
+    }
+
+    rule.onNodeWithTag("content").run {
+      performClick()
+      rule.mainClock.advanceTimeBy(ViewConfiguration.getDoubleTapTimeout().toLong())
+
+      performTouchInput { longClick() }
+      performTouchInput { doubleClick() }
+    }
+
+    rule.runOnIdle {
+      assertThat(onClickCount).isEqualTo(1)
+      assertThat(onDoubleClickCount).isEqualTo(1)
+      assertThat(onDoubleClickCount).isEqualTo(1)
+    }
+  }
+
+  @Test fun updates_to_content_are_reflected_in_the_zoomed_overlay() = runTest {
+    lateinit var state: ZoomableOverlaidPeekState
+    var contentText by mutableStateOf("text set before zoom")
+    var contentAlignment by mutableStateOf(Alignment.TopCenter)
+
+    rule.setContent {
+      Box(
+        modifier = Modifier
+          .fillMaxSize()
+          .padding(50.dp),
+        contentAlignment = contentAlignment,
+      ) {
+        state = rememberZoomableOverlayState()
+        Box(
+          Modifier
+            .size(100.dp)
+            .zoomableOverlaidPeek(state)
+            .background(Color.White)
+            .testTag("content")
+        ) {
+          BasicText(
+            modifier = Modifier.padding(8.dp),
+            text = contentText,
+            style = TextStyle.Default.copy(color = Color.Black, fontSize = 14.sp),
+          )
+        }
+      }
+    }
+
+    rule.onNodeWithTag("content").performTouchInput {
+      val noUpScope = object : TouchInjectionScope by this {
+        override fun up(pointerId: Int) = Unit
+      }
+      noUpScope.pinchToZoomInBy(IntOffset(5, 5))
+    }
+    rule.waitForIdle()
+    assertThat(state.isZoomedIn).isTrue()
+    dropshots.assertSnapshot(rule.activity.takePixelCopyScreenshot(), testName.methodName + "_[initial]")
+
+    // Content can be updated.
+    contentText = "text updated after zoom"
+    rule.waitForIdle()
+    dropshots.assertSnapshot(rule.activity.takePixelCopyScreenshot(), testName.methodName + "_[content_updated]")
+
+    // Content's position can also be updated.
+    contentText = "position updated"
+    contentAlignment = Alignment.BottomCenter
+    rule.waitForIdle()
+    dropshots.assertSnapshot(rule.activity.takePixelCopyScreenshot(), testName.methodName + "_[position_updated]")
+  }
+
+  // Regression test for https://github.com/saket/telephoto/commit/70044719301933df178d89348770dc4b31bd0660
+  @Test fun list_items_canary() {
+    lateinit var listState: LazyListState
+    val scrollTriggers = Channel<Int>(capacity = 1)
+    val itemCount = 10
+
+    rule.setContent {
+      listState = rememberLazyListState()
+      LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+      ) {
+        items(itemCount) {
+          Box(
+            Modifier
+              .fillMaxWidth()
+              .height(300.dp)
+              .zoomableOverlaidPeek(rememberZoomableOverlayState())
+              .background(Color.Yellow)
+          )
+        }
+      }
+      LaunchedEffect(Unit) {
+        scrollTriggers.consumeAsFlow().collect { index ->
+          listState.animateScrollToItem(index)
+        }
+      }
+    }
+
+    // Scroll to the last item.
+    rule.runOnIdle {
+      assertThat(listState.firstVisibleItemIndex == 0)
+      scrollTriggers.trySend(itemCount - 1)
+    }
+    rule.waitUntil {
+      listState.layoutInfo.visibleItemsInfo.last().index == 9
+    }
+
+    // Scroll back to the first item.
+    rule.runOnIdle {
+      scrollTriggers.trySend(0)
+    }
+    rule.waitUntil {
+      listState.firstVisibleItemIndex == 0
+    }
+  }
+
+  @Test fun disable_overlay_when_canvas_is_software_accelerated() {
+    lateinit var state: ZoomableOverlaidPeekState
+    rule.setContent {
+      Box(Modifier.fillMaxSize(), Alignment.Center) {
+        state = rememberZoomableOverlayState()
+        Box(
+          Modifier
+            .size(200.dp)
+            .zoomableOverlaidPeek(state)
+            .background(Color.Yellow)
+            .testTag("content")
+        )
+      }
+    }
+
+    rule.runOnIdle {
+      rule.runOnUiThread {
+        dropshots.assertSnapshot(
+          rule.activity.takeScreenshotInSoftwareAccelerationMode(),
+          testName.methodName + "_[before_zoom]"
+        )
+      }
+    }
+
+    rule.onNodeWithTag("content").performTouchInput {
+      val noUpScope = object : TouchInjectionScope by this {
+        override fun up(pointerId: Int) = Unit
+      }
+      noUpScope.pinchToZoomInBy(IntOffset(5, 5))
+    }
+    rule.runOnIdle {
+      assertThat(state.isZoomedIn).isTrue()
+      rule.runOnUiThread {
+        dropshots.assertSnapshot(
+          rule.activity.takeScreenshotInSoftwareAccelerationMode(),
+          testName.methodName + "_[during_zoom]"
+        )
+      }
+    }
+  }
+
+  @Test fun disable_zooming_when_View_is_software_accelerated() = runTest {
+    lateinit var state: ZoomableOverlaidPeekState
+    rule.setContent {
+      Box(Modifier.fillMaxSize(), Alignment.Center) {
+        SoftwareAcceleratedLayout {
+          state = rememberZoomableOverlayState()
+          Box(
+            Modifier
+              .size(200.dp)
+              .zoomableOverlaidPeek(state)
+              .background(Color.Yellow)
+              .testTag("content")
+          )
+        }
+      }
+    }
+
+    rule.waitForIdle()
+    dropshots.assertSnapshot(rule.activity.takePixelCopyScreenshot(), testName.methodName + "_[before_zoom]")
+
+    rule.onNodeWithTag("content").performTouchInput {
+      val noUpScope = object : TouchInjectionScope by this {
+        override fun up(pointerId: Int) = Unit
+      }
+      noUpScope.pinchToZoomInBy(IntOffset(5, 5))
+    }
+    rule.runOnIdle {
+      // The content shouldn't have consumed zoom gestures.
+      assertThat(state.isZoomedIn).isFalse()
+    }
+    dropshots.assertSnapshot(rule.activity.takePixelCopyScreenshot(), testName.methodName + "_[during_zoom]")
+  }
+}
+
+@Suppress("DEPRECATION")
+private fun Activity.takeScreenshotInSoftwareAccelerationMode(): Bitmap {
+  val decorView = window.decorView
+  decorView.isDrawingCacheEnabled = true
+  return Bitmap.createBitmap(decorView.drawingCache)
+}
+
+private fun TouchInjectionScope.pinchToZoomInBy(by: IntOffset) {
+  val start0 = center - Offset(5f, 5f)
+  val start1 = center + Offset(5f, 5f)
+  pinch(
+    start0 = start0,
+    start1 = start1,
+    end0 = start0 - by.toOffset(),
+    end1 = start1 + by.toOffset(),
+  )
+}
+
+private suspend fun Activity.takePixelCopyScreenshot(): Bitmap {
+  return suspendCoroutine { continuation ->
+    PixelCopy.request(
+      /* request = */ PixelCopy.Request.Builder.ofWindow(window).build(),
+      /* callbackExecutor = */ Executor(Runnable::run),
+    ) { result ->
+      continuation.resume(result.bitmap)
+    }
+  }
+}
+
+// This exists because disabling HW acceleration on the test activity doesn't seem to be working.
+@Composable
+private fun SoftwareAcceleratedLayout(content: @Composable () -> Unit) {
+  AndroidView(
+    factory = { context ->
+      object : AbstractComposeView(context) {
+        override fun isHardwareAccelerated(): Boolean = false
+
+        @Composable override fun Content() {
+          CompositionLocalProvider(LocalView provides this) {
+            content()
+          }
+        }
+      }
+    },
+  )
+}
