@@ -55,11 +55,13 @@ class AndroidTestConventionPlugin : Plugin<Project> {
     }
 
     emulatorwtf {
+      val usesPixelCopy = project.name == "zoomable-peek-overlay"
+
       version.set(libs.findVersion("emulatorWtfCli").get().toString())
       devices.set(
         listOf(
           mapOf(
-            "model" to "Pixel7Atd",
+            "model" to if (usesPixelCopy) "Pixel7" else "Pixel7Atd",
             "version" to 34,
             "gpu" to "software",  // Disable GPU acceleration to prevent screenshot differences.
           )
