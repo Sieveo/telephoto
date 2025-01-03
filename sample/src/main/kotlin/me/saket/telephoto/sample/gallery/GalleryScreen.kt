@@ -31,8 +31,8 @@ import com.slack.circuit.runtime.Navigator
 import me.saket.telephoto.sample.GalleryScreenKey
 import me.saket.telephoto.sample.MediaViewerScreenKey
 import me.saket.telephoto.sample.R
-import me.saket.telephoto.zoomable.rememberZoomableOverlayState
-import me.saket.telephoto.zoomable.zoomableOverlaidPeek
+import me.saket.telephoto.zoomable.rememberZoomablePeekOverlayState
+import me.saket.telephoto.zoomable.zoomablePeekOverlay
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -75,7 +75,7 @@ private fun AlbumGrid(
           .height(280.dp)
           .background(MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp))
           .clickable { navigator.goTo(MediaViewerScreenKey(album, initialIndex = index)) }
-          .zoomableOverlaidPeek(rememberZoomableOverlayState()),
+          .zoomablePeekOverlay(rememberZoomablePeekOverlayState()),
         contentAlignment = Alignment.BottomStart
       ) {
         AsyncImage(

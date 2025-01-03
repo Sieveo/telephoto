@@ -24,18 +24,16 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.layout.onPlaced
 import kotlinx.coroutines.flow.collectLatest
 
-// todo:
-//  - settling animation does not resume if it's interrupted by a tap.
 /**
  * Adds a short-lived, overlaid zoom effect reminiscent of Instagram's "peek" feature.
- * The content zooms in while the user interacts with it and, unlike [Modifier.zoomable][me.saket.telephoto.zoomable], automatically returns
- * to its normal state once the gesture is released.
+ * The content zooms in while the user interacts with it and, unlike [Modifier.zoomable][me.saket.telephoto.zoomable],
+ * automatically returns to its normal state once the gesture is released.
  */
-fun Modifier.zoomableOverlaidPeek(
-  state: ZoomableOverlaidPeekState,
-  overlayDecoration: ZoomableOverlaidPeekDecoration = ZoomableOverlaidPeekDecoration.scrim(),
+fun Modifier.zoomablePeekOverlay(
+  state: ZoomablePeekOverlayState,
+  overlayDecoration: ZoomablePeekOverlayDecoration = ZoomablePeekOverlayDecoration.scrim(),
 ): Modifier {
-  check(state is RealZoomableOverlaidPeekState)
+  check(state is RealZoomablePeekOverlayState)
   state.overlayDecoration = overlayDecoration
   if (state.graphicsLayer == null) {
     return this
@@ -43,12 +41,12 @@ fun Modifier.zoomableOverlaidPeek(
   return this
     .drawWithContent {
       if (isCanvasHardwareAccelerated()) {
-      state.graphicsLayer.record {
-        this@drawWithContent.drawContent()
-      }
+        state.graphicsLayer.record {
+          this@drawWithContent.drawContent()
+        }
         if (!state.isZoomedIn) {
-        drawLayer(state.graphicsLayer)
-      }
+          drawLayer(state.graphicsLayer)
+        }
       } else {
         drawContent()
       }
@@ -61,11 +59,11 @@ fun Modifier.zoomableOverlaidPeek(
 }
 
 /**
- * Draws decoration around the zoomed content where [Modifier.zoomableOverlaidPeek] is used.
+ * Draws decoration around the zoomed content where [Modifier.zoomablePeekOverlay] is used.
  * Inspired by [TextFieldDecorator].
  */
 @Stable
-fun interface ZoomableOverlaidPeekDecoration {
+fun interface ZoomablePeekOverlayDecoration {
   /**
    * Allows you to render decorations around the inner (zoomed) content. [innerContent] must not
    * be called more than once.
@@ -85,19 +83,19 @@ fun interface ZoomableOverlaidPeekDecoration {
    * ```
    */
   @Composable
-  fun Decorate(state: ZoomableOverlaidPeekState, innerContent: @Composable () -> Unit)
+  fun Decorate(state: ZoomablePeekOverlayState, innerContent: @Composable () -> Unit)
 
   companion object {
     /** Draws a scrim behind the zoomed content. */
     @Stable
     fun scrim(
       color: Color = Color.Black.copy(alpha = 0.4f)
-    ): ZoomableOverlaidPeekDecoration = Scrim(color)
+    ): ZoomablePeekOverlayDecoration = Scrim(color)
   }
 
-  private data class Scrim(val color: Color) : ZoomableOverlaidPeekDecoration {
+  private data class Scrim(val color: Color) : ZoomablePeekOverlayDecoration {
     @Composable
-    override fun Decorate(state: ZoomableOverlaidPeekState, innerContent: @Composable () -> Unit) {
+    override fun Decorate(state: ZoomablePeekOverlayState, innerContent: @Composable () -> Unit) {
       val animatedAlpha = remember { Animatable(initialValue = 0f) }
       LaunchedEffect(state) {
         snapshotFlow { state.zoomableState.isAnimationRunning }.collectLatest { isSettling ->

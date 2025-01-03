@@ -86,14 +86,14 @@ class ZoomableOverlaidPeekTest {
   }
 
   @Test fun zoom_in_and_release() = runTest {
-    lateinit var state: ZoomableOverlaidPeekState
+    lateinit var state: ZoomablePeekOverlayState
     rule.setContent {
       Box(Modifier.fillMaxSize(), Alignment.Center) {
-        state = rememberZoomableOverlayState()
+        state = rememberZoomablePeekOverlayState()
         Box(
           Modifier
             .size(200.dp)
-            .zoomableOverlaidPeek(state)
+            .zoomablePeekOverlay(state)
             .background(Color.Green)
             .testTag("content")
         )
@@ -121,10 +121,10 @@ class ZoomableOverlaidPeekTest {
   }
 
   @Test fun custom_overlay_decoration() = runTest {
-    lateinit var state: ZoomableOverlaidPeekState
+    lateinit var state: ZoomablePeekOverlayState
     rule.setContent {
       Box(Modifier.fillMaxSize(), Alignment.Center) {
-        val overlayDecoration = ZoomableOverlaidPeekDecoration { _, innerContent ->
+        val overlayDecoration = ZoomablePeekOverlayDecoration { _, innerContent ->
           Box(
             Modifier
               .fillMaxSize()
@@ -134,11 +134,11 @@ class ZoomableOverlaidPeekTest {
           }
         }
 
-        state = rememberZoomableOverlayState()
+        state = rememberZoomablePeekOverlayState()
         Box(
           Modifier
             .size(200.dp)
-            .zoomableOverlaidPeek(state, overlayDecoration)
+            .zoomablePeekOverlay(state, overlayDecoration)
             .background(Color.Yellow)
             .testTag("content")
         )
@@ -175,7 +175,7 @@ class ZoomableOverlaidPeekTest {
         Box(
           Modifier
             .size(200.dp)
-            .zoomableOverlaidPeek(rememberZoomableOverlayState())
+            .zoomablePeekOverlay(rememberZoomablePeekOverlayState())
             .background(Color.Yellow)
             .combinedClickable(
               onClick = { onClickCount++ },
@@ -203,7 +203,7 @@ class ZoomableOverlaidPeekTest {
   }
 
   @Test fun updates_to_content_are_reflected_in_the_zoomed_overlay() = runTest {
-    lateinit var state: ZoomableOverlaidPeekState
+    lateinit var state: ZoomablePeekOverlayState
     var contentText by mutableStateOf("text set before zoom")
     var contentAlignment by mutableStateOf(Alignment.TopCenter)
 
@@ -214,11 +214,11 @@ class ZoomableOverlaidPeekTest {
           .padding(50.dp),
         contentAlignment = contentAlignment,
       ) {
-        state = rememberZoomableOverlayState()
+        state = rememberZoomablePeekOverlayState()
         Box(
           Modifier
             .size(100.dp)
-            .zoomableOverlaidPeek(state)
+            .zoomablePeekOverlay(state)
             .background(Color.White)
             .testTag("content")
         ) {
@@ -271,7 +271,7 @@ class ZoomableOverlaidPeekTest {
             Modifier
               .fillMaxWidth()
               .height(300.dp)
-              .zoomableOverlaidPeek(rememberZoomableOverlayState())
+              .zoomablePeekOverlay(rememberZoomablePeekOverlayState())
               .background(Color.Yellow)
           )
         }
@@ -302,14 +302,14 @@ class ZoomableOverlaidPeekTest {
   }
 
   @Test fun disable_overlay_when_canvas_is_software_accelerated() {
-    lateinit var state: ZoomableOverlaidPeekState
+    lateinit var state: ZoomablePeekOverlayState
     rule.setContent {
       Box(Modifier.fillMaxSize(), Alignment.Center) {
-        state = rememberZoomableOverlayState()
+        state = rememberZoomablePeekOverlayState()
         Box(
           Modifier
             .size(200.dp)
-            .zoomableOverlaidPeek(state)
+            .zoomablePeekOverlay(state)
             .background(Color.Yellow)
             .testTag("content")
         )
@@ -343,15 +343,15 @@ class ZoomableOverlaidPeekTest {
   }
 
   @Test fun disable_zooming_when_View_is_software_accelerated() = runTest {
-    lateinit var state: ZoomableOverlaidPeekState
+    lateinit var state: ZoomablePeekOverlayState
     rule.setContent {
       Box(Modifier.fillMaxSize(), Alignment.Center) {
         SoftwareAcceleratedLayout {
-          state = rememberZoomableOverlayState()
+          state = rememberZoomablePeekOverlayState()
           Box(
             Modifier
               .size(200.dp)
-              .zoomableOverlaidPeek(state)
+              .zoomablePeekOverlay(state)
               .background(Color.Yellow)
               .testTag("content")
           )

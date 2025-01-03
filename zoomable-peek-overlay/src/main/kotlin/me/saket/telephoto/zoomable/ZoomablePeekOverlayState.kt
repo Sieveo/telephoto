@@ -6,13 +6,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.platform.LocalView
 
-// todo: fix this name (also find usages in code comments).
 /**
- * Create a [ZoomableOverlaidPeekState] that can be used with
- * [Modifier.overlayZoomable][zoomableOverlaidPeek].
+ * Create a [ZoomablePeekOverlayState] that can be used with
+ * [Modifier.zoomablePeekOverlay][zoomablePeekOverlay].
  */
 @Composable
-fun rememberZoomableOverlayState(): ZoomableOverlaidPeekState {
+fun rememberZoomablePeekOverlayState(): ZoomablePeekOverlayState {
   val zoomableState = rememberZoomableState(
     zoomSpec = ZoomSpec(
       maximum = ZoomLimit(factor = 1f, overzoomEffect = OverzoomEffect.NoLimits),
@@ -26,7 +25,7 @@ fun rememberZoomableOverlayState(): ZoomableOverlaidPeekState {
     null  // GraphicsLayer does not support SW acceleration.
   }
   return remember(zoomableState, graphicsLayer) {
-    RealZoomableOverlaidPeekState(
+    RealZoomablePeekOverlayState(
       zoomableState = zoomableState,
       graphicsLayer = graphicsLayer,
     )
@@ -35,9 +34,9 @@ fun rememberZoomableOverlayState(): ZoomableOverlaidPeekState {
   }
 }
 
-/** State class for [Modifier.overlayZoomable][zoomableOverlaidPeek]. */
+/** State class for [Modifier.zoomablePeekOverlay][zoomablePeekOverlay]. */
 @Stable
-sealed interface ZoomableOverlaidPeekState {
+sealed interface ZoomablePeekOverlayState {
   val zoomableState: ZoomableState
 
   val isZoomedIn: Boolean

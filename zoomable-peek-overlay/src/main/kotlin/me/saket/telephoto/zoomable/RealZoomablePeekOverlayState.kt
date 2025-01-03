@@ -32,13 +32,13 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.round
 
 @Stable
-internal class RealZoomableOverlaidPeekState(
+internal class RealZoomablePeekOverlayState(
   override val zoomableState: ZoomableState,
   val graphicsLayer: GraphicsLayer?,
-) : ZoomableOverlaidPeekState {
+) : ZoomablePeekOverlayState {
 
   var coordinates: LayoutCoordinates? by mutableStateOf(null, neverEqualPolicy())
-  lateinit var overlayDecoration: ZoomableOverlaidPeekDecoration
+  lateinit var overlayDecoration: ZoomablePeekOverlayDecoration
 
   override val isZoomedIn: Boolean by derivedStateOf {
     zoomableState.contentTransformation.scaleMetadata.userZoom > 1f
@@ -56,7 +56,7 @@ internal class RealZoomableOverlaidPeekState(
 
         boundsInWindow?.let { boundsInWindow ->
           Box(Modifier.fillMaxSize()) {
-            overlayDecoration.Decorate(state = this@RealZoomableOverlaidPeekState) {
+            overlayDecoration.Decorate(state = this@RealZoomablePeekOverlayState) {
               Canvas(
                 Modifier
                   .size(boundsInWindow.size.toDpSize())
