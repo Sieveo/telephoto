@@ -62,7 +62,7 @@ internal class RealZoomablePeekOverlayState(
                   .size(boundsInWindow.size.toDpSize())
                   .offset { boundsInWindow.topLeft.round() }
               ) {
-                if (isCanvasHardwareAccelerated()) {
+                if (isCanvasHardwareAccelerated) {
                   drawLayer(graphicsLayer)
                 }
               }

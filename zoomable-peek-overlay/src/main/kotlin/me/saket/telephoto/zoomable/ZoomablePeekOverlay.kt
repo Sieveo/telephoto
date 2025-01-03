@@ -15,10 +15,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.layout.onPlaced
@@ -40,7 +38,7 @@ fun Modifier.zoomablePeekOverlay(
   }
   return this
     .drawWithContent {
-      if (isCanvasHardwareAccelerated()) {
+      if (isCanvasHardwareAccelerated) {
         state.graphicsLayer.record {
           this@drawWithContent.drawContent()
         }
@@ -118,8 +116,5 @@ fun interface ZoomablePeekOverlayDecoration {
   }
 }
 
-internal fun DrawScope.isCanvasHardwareAccelerated(): Boolean {
-  lateinit var canvas: Canvas
-  drawIntoCanvas { canvas = it }
-  return canvas.nativeCanvas.isHardwareAccelerated
-}
+internal val DrawScope.isCanvasHardwareAccelerated: Boolean
+  get() = drawContext.canvas.nativeCanvas.isHardwareAccelerated
