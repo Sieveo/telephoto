@@ -21,6 +21,9 @@ kotlin {
       implementation(compose.uiUtil)
       implementation(libs.kotlinx.immutableCollections)
     }
+    commonTest.dependencies {
+      implementation(kotlin("test"))
+    }
     androidMain {
       dependencies {
         implementation(libs.androidx.ktx.core)

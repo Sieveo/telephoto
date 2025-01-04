@@ -12,12 +12,12 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isLessThan
 import assertk.assertions.isNotEmpty
 import assertk.assertions.isNull
-import org.junit.Ignore
-import org.junit.Test
 import kotlin.random.Random
 import kotlin.random.nextInt
+import kotlin.test.Ignore
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.measureTime
+import kotlin.test.Test
 
 class ImageRegionTileGridGeneratorTest {
 
@@ -111,7 +111,7 @@ class ImageRegionTileGridGeneratorTest {
     }
   }
 
-  @Ignore("The output of this test is different when it's run individually vs with the whole class")
+  @Ignore // "The output of this test is different when it's run individually vs with the whole class"
   @Test fun `generation of tiles should be fast enough to be run on the main thread`() {
     val time = measureTime {
       repeat(1_000) {
