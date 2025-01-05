@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-  namespace = "me.saket.telephoto.zoomableoverlaidpeek"
+  namespace = "me.saket.telephoto.zoomablepeekoverlay"
 }
 
 dependencies {

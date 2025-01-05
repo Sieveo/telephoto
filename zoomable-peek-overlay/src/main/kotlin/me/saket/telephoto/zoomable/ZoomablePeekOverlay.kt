@@ -75,7 +75,7 @@ fun interface ZoomablePeekOverlayDecoration {
    *
    * Box(
    *  Modifier
-   *    .zoomableOverlaidPeek(state)
+   *    .zoomablePeekOverlay(state)
    *    .clip(RoundedCornerShape(cornerSize))
    * )
    * ```

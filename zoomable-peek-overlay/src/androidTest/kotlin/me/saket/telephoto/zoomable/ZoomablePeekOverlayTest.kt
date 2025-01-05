@@ -66,7 +66,7 @@ import java.util.concurrent.Executor
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-class ZoomableOverlaidPeekTest {
+class ZoomablePeekOverlayTest {
   @get:Rule val rule = createAndroidComposeRule<ScreenshotTestActivity>()
   @get:Rule val timeout = Timeout.seconds(30)!!
   @get:Rule val testName = TestName()
