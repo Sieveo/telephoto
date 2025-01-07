@@ -1,4 +1,4 @@
-@file:Suppress("FunctionName", "NAME_SHADOWING")
+@file:Suppress("FunctionName")
 
 package me.saket.telephoto.subsamplingimage.internal
 
@@ -9,7 +9,10 @@ import androidx.annotation.VisibleForTesting
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.core.content.getSystemService
-import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
 import me.saket.telephoto.subsamplingimage.SubSamplingImageSource
 import me.saket.telephoto.subsamplingimage.internal.ImageRegionDecoder.DecodeResult
 
@@ -30,7 +33,7 @@ internal class PooledAndroidImageRegionDecoder private constructor(
   }
 
   override fun close() {
-    decoders.resources.forEach { it.close() }
+    decoders.tryClose()
   }
 
   companion object {
@@ -79,17 +82,23 @@ internal class PooledAndroidImageRegionDecoder private constructor(
   }
 }
 
-private class ResourcePool<T>(val resources: List<T>) {
-  private val channel = Channel<T>(Channel.UNLIMITED).apply {
-    resources.forEach(::trySend)
-  }
+internal class ResourcePool<T>(resources: List<T>) {
+  private val resources = ArrayDeque(resources)
+  private val semaphore = Semaphore(permits = resources.size)
+  private val mutex = Mutex()
 
   suspend fun <R> borrow(handler: suspend (T) -> R): R {
-    val borrowed = channel.receive()
-    return try {
-      handler(borrowed)
-    } finally {
-      channel.send(borrowed)
+    return semaphore.withPermit {
+      val borrowed = mutex.withLock { resources.removeFirst() }
+      try {
+        handler(borrowed)
+      } finally {
+        mutex.withLock { resources.addLast(borrowed) }
+      }
     }
+  }
+
+  fun tryClose() {
+    resources.clear()
   }
 }
