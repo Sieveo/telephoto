@@ -85,7 +85,7 @@ package me.saket.telephoto.zoomable {
     property public final me.saket.telephoto.zoomable.HardwareShortcutsSpec Disabled;
   }
 
-  @androidx.compose.runtime.Immutable public interface OverzoomEffect {
+  @androidx.compose.runtime.Immutable public final class OverzoomEffect {
     field public static final me.saket.telephoto.zoomable.OverzoomEffect.Companion Companion;
   }
 

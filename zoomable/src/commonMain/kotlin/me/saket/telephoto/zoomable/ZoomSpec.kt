@@ -80,22 +80,27 @@ class ZoomLimit(
   val overzoomEffect: OverzoomEffect = OverzoomEffect.RubberBanding,
 )
 
+/**
+ * Represents a visual effect that displays when the zoom limits of a zoomable container
+ * have been reached.
+ *
+ * TODO: Make OverzoomEffect extensible by consumers when ready.
+ */
 @Immutable
-interface OverzoomEffect {
+class OverzoomEffect internal constructor(
+  @Suppress("unused") private val value: Int
+) {
   companion object {
     /**
      * Applies a rubber banding effect to zoom gestures when content is zoomed beyond
      * its limit as a form of visual feedback that the content can't be zoomed any further.
      */
-    val RubberBanding: OverzoomEffect = RubberBandingOverzoomEffect
+    val RubberBanding: OverzoomEffect = OverzoomEffect(1)
 
     /**
      * Does not limit over/under zooms in any manner. Content will zoom in a free-form
      * manner even when it goes beyond its limit (until the gesture is released).
      */
-    val NoLimits: OverzoomEffect = NoLimitsOverzoomEffect
+    val NoLimits: OverzoomEffect = OverzoomEffect(2)
   }
 }
-
-internal data object RubberBandingOverzoomEffect : OverzoomEffect
-internal data object NoLimitsOverzoomEffect : OverzoomEffect
