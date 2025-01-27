@@ -263,6 +263,22 @@ class GlideImageSourceTest {
     }
   }
 
+  @Test fun avif_images_should_not_be_sub_sampled() = runTest {
+    serverRule.server.dispatcher = object : Dispatcher() {
+      override fun dispatch(request: RecordedRequest): MockResponse {
+        check(request.path!!.endsWith(".avif"))
+        return assetAsResponse("full_image.avif")
+      }
+    }
+
+    resolve(
+      model = serverRule.server.url("full_image.avif").toString()
+    ).test {
+      skipItems(1) // Default item.
+      assertThat(awaitItem().delegate!!).isNotInstanceOf(SubSamplingDelegate::class.java)
+    }
+  }
+
   @Test fun correctly_resolve_vector_drawables() {
     screenshotValidator.tolerancePercentOnCi = 0.06f
 

@@ -4,10 +4,11 @@ import android.content.Context
 import android.util.TypedValue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import me.saket.telephoto.subsamplingimage.ResourceImageSource
 import me.saket.telephoto.subsamplingimage.BufferedSubSamplingImageSource
+import me.saket.telephoto.subsamplingimage.ResourceImageSource
 import me.saket.telephoto.subsamplingimage.SubSamplingImageSource
 import me.saket.telephoto.subsamplingimage.internal.AndroidImageRegionDecoder
+import me.saket.telephoto.subsamplingimage.internal.isAvif
 import me.saket.telephoto.subsamplingimage.internal.isGif
 import me.saket.telephoto.subsamplingimage.internal.isSvg
 import okio.Buffer
@@ -27,7 +28,7 @@ suspend fun SubSamplingImageSource.canBeSubSampled(context: Context): Boolean {
     peek(context).use {
       // Check for GIFs as well because Android's ImageDecoder
       // can return a Bitmap for single-frame GIFs.
-      !isSvg(it) && !isGif(it)
+      !isSvg(it) && !isGif(it) && !isAvif(it)
     }
   }
 }

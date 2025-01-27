@@ -497,6 +497,22 @@ class Coil3ImageSourceTest {
     }
   }
 
+  @Test fun avif_images_should_not_be_sub_sampled() = runTest {
+    serverRule.server.dispatcher = object : Dispatcher() {
+      override fun dispatch(request: RecordedRequest): MockResponse {
+        check(request.path!!.endsWith(".avif"))
+        return assetAsResponse("full_image.avif")
+      }
+    }
+
+    resolve {
+      serverRule.server.url("full_image.avif").toString()
+    }.test {
+      skipItems(1) // Default item.
+      assertThat(awaitItem().delegate!!).isNotInstanceOf(ZoomableImageSource.SubSamplingDelegate::class.java)
+    }
+  }
+
   // Regression test for https://github.com/saket/telephoto/issues/37.
   @Test fun reload_image_if_its_evicted_from_the_disk_cache_but_is_still_present_in_the_memory_cache() = runTest {
     val memoryCache = context.imageLoader.memoryCache!!
