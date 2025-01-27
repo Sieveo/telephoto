@@ -5,8 +5,6 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.view.ViewGroup
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
@@ -49,23 +47,22 @@ internal class RealZoomablePeekOverlayState(
   internal fun DisplayOverlayEffect() {
     val graphicsLayer = graphicsLayer
     if (isZoomedIn && graphicsLayer != null) {
-      rememberDecorOverlay().setContent {
+      val overlay = rememberDecorOverlay()
+      overlay.setContent {
         val boundsInWindow by remember {
           derivedStateOf { coordinates?.boundsInWindow() }
         }
 
         boundsInWindow?.let { boundsInWindow ->
-          Box(Modifier.fillMaxSize()) {
-            overlayDecoration.Decorate(state = this@RealZoomablePeekOverlayState) {
-              Canvas(
-                Modifier
-                  .size(boundsInWindow.size.toDpSize())
-                  .offset { boundsInWindow.topLeft.round() }
-              ) {
-                if (isCanvasHardwareAccelerated) {
-                  drawLayer(graphicsLayer)
-                }
-              }
+          overlayDecoration.Decorate(state = this@RealZoomablePeekOverlayState)
+
+          Canvas(
+            Modifier
+              .size(boundsInWindow.size.toDpSize())
+              .offset { boundsInWindow.topLeft.round() }
+          ) {
+            if (isCanvasHardwareAccelerated) {
+              drawLayer(graphicsLayer)
             }
           }
         }

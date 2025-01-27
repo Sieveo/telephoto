@@ -4,7 +4,7 @@ package me.saket.telephoto.zoomable
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.input.TextFieldDecorator
 import androidx.compose.runtime.Composable
@@ -13,7 +13,6 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -56,16 +55,10 @@ fun Modifier.zoomablePeekOverlay(
     )
 }
 
-/**
- * Draws decoration around the zoomed content where [Modifier.zoomablePeekOverlay] is used.
- * Inspired by [TextFieldDecorator].
- */
+/** Draws decoration behind the zoomed content where [Modifier.zoomablePeekOverlay] is used. */
 @Stable
 fun interface ZoomablePeekOverlayDecoration {
   /**
-   * Allows you to render decorations around the inner (zoomed) content. [innerContent] must not
-   * be called more than once.
-   *
    * This is intended for drawing decorations *behind* the content. To control the appearance of your
    * content itself during zoom gestures, apply effects directly to the content instead:
    *
@@ -81,7 +74,7 @@ fun interface ZoomablePeekOverlayDecoration {
    * ```
    */
   @Composable
-  fun Decorate(state: ZoomablePeekOverlayState, innerContent: @Composable () -> Unit)
+  fun Decorate(state: ZoomablePeekOverlayState)
 
   companion object {
     /** Draws a scrim behind the zoomed content. */
@@ -93,7 +86,7 @@ fun interface ZoomablePeekOverlayDecoration {
 
   private data class Scrim(val color: Color) : ZoomablePeekOverlayDecoration {
     @Composable
-    override fun Decorate(state: ZoomablePeekOverlayState, innerContent: @Composable () -> Unit) {
+    override fun Decorate(state: ZoomablePeekOverlayState) {
       val animatedAlpha = remember { Animatable(initialValue = 0f) }
       LaunchedEffect(state) {
         snapshotFlow { state.zoomableState.isAnimationRunning }.collectLatest { isSettling ->
@@ -103,14 +96,8 @@ fun interface ZoomablePeekOverlayDecoration {
           )
         }
       }
-      Box(
-        Modifier
-          .fillMaxSize()
-          .drawBehind {
-            drawRect(color, alpha = animatedAlpha.value)
-          }
-      ) {
-        innerContent()
+      Canvas(Modifier.fillMaxSize()) {
+        drawRect(color, alpha = animatedAlpha.value)
       }
     }
   }

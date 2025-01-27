@@ -124,14 +124,12 @@ class ZoomablePeekOverlayTest {
     lateinit var state: ZoomablePeekOverlayState
     rule.setContent {
       Box(Modifier.fillMaxSize(), Alignment.Center) {
-        val overlayDecoration = ZoomablePeekOverlayDecoration { _, innerContent ->
+        val overlayDecoration = ZoomablePeekOverlayDecoration {
           Box(
             Modifier
               .fillMaxSize()
               .background(Brush.linearGradient(listOf(Color(0xFF2be4dc), Color(0xFF243484))))
-          ) {
-            innerContent()
-          }
+          )
         }
 
         state = rememberZoomablePeekOverlayState()
@@ -165,7 +163,7 @@ class ZoomablePeekOverlayTest {
   }
 
   @OptIn(ExperimentalFoundationApi::class)
-    @Test fun content_does_not_intercept_click_events() {
+  @Test fun content_does_not_intercept_click_events() {
     var onClickCount = 0
     var onLongClickCount = 0
     var onDoubleClickCount = 0
