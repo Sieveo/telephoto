@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.colorspace.ColorSpace
 import androidx.compose.ui.graphics.toAndroidColorSpace
 import androidx.compose.ui.graphics.toComposeColorSpace
 import dev.drewhamilton.poko.Poko
+import kotlin.LazyThreadSafetyMode.NONE
 import android.graphics.ColorSpace as AndroidColorSpace
 import androidx.compose.ui.graphics.colorspace.ColorSpace as ComposeColorSpace
 
@@ -19,16 +20,21 @@ import androidx.compose.ui.graphics.colorspace.ColorSpace as ComposeColorSpace
 @Immutable
 class ImageBitmapOptions internal constructor(
   val config: ImageBitmapConfig = ImageBitmapConfig.Argb8888,
-  val colorSpace: ColorSpace? = null,
   internal val androidColorSpace: AndroidColorSpace? = null,
+  colorSpace: () -> ColorSpace?,
 ) {
+  // The compose color space is computed lazily to prevent crashes by bad Android <> Compose UI
+  // conversions. Example: https://issuetracker.google.com/issues/377021410#comment3
+  @Suppress("unused")
+  val colorSpace: ColorSpace? by lazy(NONE) { colorSpace() }
+
   // TODO: remove when https://issuetracker.google.com/issues/377021410 is resolved.
   constructor(
     config: ImageBitmapConfig = ImageBitmapConfig.Argb8888,
     colorSpace: ComposeColorSpace? = null,
   ) : this(
     config = config,
-    colorSpace = colorSpace,
+    colorSpace = { colorSpace },
     androidColorSpace = if (SDK_INT >= 26) colorSpace?.toAndroidColorSpace() else null,
   )
 
@@ -44,7 +50,7 @@ fun ImageBitmapOptions(from: Bitmap): ImageBitmapOptions {
   val androidColorSpace = if (SDK_INT >= 26) from.colorSpace else null
   return ImageBitmapOptions(
     config = from.config!!.toComposeConfig(),
-    colorSpace = if (SDK_INT >= 26) androidColorSpace?.toComposeColorSpace() else null,
+    colorSpace = { if (SDK_INT >= 26) androidColorSpace?.toComposeColorSpace() else null },
     androidColorSpace = androidColorSpace,
   )
 }

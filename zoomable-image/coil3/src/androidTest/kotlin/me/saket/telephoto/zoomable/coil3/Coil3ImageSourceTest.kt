@@ -7,7 +7,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
-import android.os.Environment
 import android.provider.MediaStore
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
@@ -630,6 +629,37 @@ class Coil3ImageSourceTest {
       imageState.isImageDisplayed && compositionCount >= 10
     }
     assertThat(loadCount).isEqualTo(1)
+  }
+
+  // Regression test for https://github.com/saket/telephoto/issues/129.
+  @Test fun do_not_crash_if_the_color_space_cannot_be_parsed_by_compose_ui() = runTest {
+    serverRule.server.dispatcher = object : Dispatcher() {
+      override fun dispatch(request: RecordedRequest) = assetAsResponse("p3_image.jpg")
+    }
+    val imageUrl = withContext(Dispatchers.IO) {
+      serverRule.server.url("ignored").toString()
+    }
+
+    lateinit var imageState: ZoomableImageState
+    rule.setContent {
+      ZoomableAsyncImage(
+        state = rememberZoomableImageState().also { imageState = it },
+        modifier = Modifier.fillMaxSize(),
+        model = ImageRequest.Builder(LocalContext.current)
+          .data(imageUrl)
+          .allowHardware(false) // Unsupported by Screenshot.capture()
+          .listener(onError = { _, res ->
+            res.throwable.printStackTrace()
+          })
+          .build(),
+        contentDescription = null
+      )
+    }
+
+    rule.waitUntil { imageState.isImageDisplayed }
+    rule.runOnIdle {
+      dropshots.assertSnapshot(rule.activity)
+    }
   }
 
   context(TestScope)
