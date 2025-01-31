@@ -33,9 +33,11 @@ import androidx.compose.ui.test.performScrollToKey
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pinch
 import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.center
 import androidx.compose.ui.unit.dp
 import assertk.assertThat
+import assertk.assertions.contains
 import assertk.assertions.containsOnly
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
@@ -272,6 +274,45 @@ class ZoomableTest {
     }
     rule.runOnIdle {
       assertThat(secondZoomableState.contentTransformation.offset).isEqualTo(Offset(-1080f, -1200f))
+    }
+  }
+
+  @Test fun disable_over_and_under_zoom() {
+    val observedScales = ArrayDeque<ScaleFactor>()
+    rule.setContent {
+      val zoomableState = rememberZoomableState(
+        ZoomSpec(
+          maxZoomFactor = 2f,
+          overzoomEffect = OverzoomEffect.Disabled,
+        )
+      )
+      Box(
+        Modifier
+          .fillMaxSize()
+          .zoomable(zoomableState)
+          .testTag("content")
+      )
+
+      LaunchedEffect(Unit) {
+        snapshotFlow { zoomableState.contentTransformation.scale }.collect {
+          observedScales.addLast(it)
+        }
+      }
+    }
+
+    val content = rule.onNodeWithTag("content")
+    content.performTouchInput {
+      doubleClick()
+    }
+    rule.runOnIdle {
+      assertThat(observedScales.removeAll()).contains(ScaleFactor(2f, 2f))
+    }
+
+    content.performTouchInput {
+      pinchToZoomInBy(IntOffset(10, 10))
+    }
+    rule.runOnIdle {
+      assertThat(observedScales.removeAll()).isEmpty()
     }
   }
 

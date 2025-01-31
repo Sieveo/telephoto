@@ -857,6 +857,7 @@ private fun OverzoomEffect.adjust(zoomDelta: Float): Float {
         else -> 1f - zoomDelta / 250
       }
     }
+    OverzoomEffect.Disabled -> 1f
     OverzoomEffect.NoLimits -> zoomDelta
     else -> error("unknown overzoom effect = $this")
   }

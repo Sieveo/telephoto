@@ -55,6 +55,7 @@ class ZoomSpec(
   val maxZoomFactor: Float
     get() = maximum.factor
 
+  @Suppress("unused")
   @Deprecated(
     message = "Use maximum.overzoomEffect instead.",
     replaceWith = ReplaceWith("maximum.overzoomEffect != OverZoomEffect.None"),
@@ -102,5 +103,11 @@ class OverzoomEffect internal constructor(
      * manner even when it goes beyond its limit (until the gesture is released).
      */
     val NoLimits: OverzoomEffect = OverzoomEffect(2)
+
+    /**
+     * Disables overzoom effects entirely. Content will stop zooming as soon as it
+     * reaches its limits, without any additional visual feedback or elasticity.
+     */
+    val Disabled: OverzoomEffect = OverzoomEffect(3)
   }
 }
