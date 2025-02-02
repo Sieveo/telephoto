@@ -2,7 +2,6 @@
 
 package me.saket.telephoto.subsamplingimage
 
-import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
