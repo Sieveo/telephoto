@@ -20,6 +20,12 @@ class ActivityRecreationTester<A : ComponentActivity>(
     testRule.setContent(block)
   }
 
+  fun recreate() {
+    recreateWith {
+      testRule.activityRule.scenario.recreate()
+    }
+  }
+
   fun recreateWith(block: () -> Unit) {
     val activityBefore = testRule.activity
     block()

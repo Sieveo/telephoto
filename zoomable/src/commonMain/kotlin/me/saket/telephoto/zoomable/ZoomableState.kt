@@ -41,7 +41,7 @@ fun rememberZoomableState(
     it.zoomSpec = zoomSpec
     it.hardwareShortcutsSpec = hardwareShortcutsSpec
     it.layoutDirection = LocalLayoutDirection.current
-    it.RetainPanAcrossContentSizeChangesEffect()
+    //it.RetainPanAcrossContentSizeChangesEffect()
   }
 }
 

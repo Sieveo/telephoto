@@ -71,6 +71,7 @@ import androidx.compose.ui.test.performMultiModalInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pinch
 import androidx.compose.ui.test.pressKey
+import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
@@ -114,6 +115,7 @@ import me.saket.telephoto.zoomable.ZoomableImageTest.ScrollDirection.RightToLeft
 import org.junit.After
 import org.junit.AssumptionViolatedException
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TestName
@@ -257,6 +259,7 @@ class ZoomableImageTest {
     }
   }
 
+  @Ignore("https://github.com/saket/telephoto/issues/128")
   @Test fun retain_transformations_across_image_changes_with_the_same_aspect_ratio() {
     var assetName by mutableStateOf("fox_1000.jpg")
     lateinit var state: ZoomableImageState
@@ -291,6 +294,51 @@ class ZoomableImageTest {
     // This does not use runOnIdle() because the image's
     // centroid should be retained immediately on the next frame.
     dropshots.assertSnapshot(rule.activity, testName.methodName + "_[after]")
+  }
+
+  // Regression test for https://github.com/saket/telephoto/issues/128.
+  @Test fun do_not_incorrectly_retain_pan_when_state_is_restored() {
+    lateinit var state: ZoomableImageState
+
+    val recreationTester = ActivityRecreationTester(rule)
+    recreationTester.setContent {
+      ZoomableImage(
+        modifier = Modifier
+          .fillMaxSize()
+          .testTag("image"),
+        image = ZoomableImageSource.subSampledAssetWithPreview(
+          assetName = "arale_10k.jpg",
+          previewAssetName = "arale_1080p.jpg",
+        ),
+        state = rememberZoomableImageState(
+          rememberZoomableState(zoomSpec = ZoomSpec(maxZoomFactor = 5f))
+        ).also { state = it },
+        contentScale = ContentScale.Crop,
+        contentDescription = null,
+      )
+    }
+
+    rule.waitUntil(3.seconds) {
+      state.isImageDisplayedInFullQuality
+    }
+    rule.onNodeWithTag("image").performTouchInput {
+      swipe(
+        start = center,
+        end = centerLeft,
+      )
+    }
+    rule.runOnIdle {
+      dropshots.assertSnapshot(rule.activity, testName.methodName + "_[before]")
+    }
+
+    recreationTester.recreate()
+
+    rule.waitUntil(3.seconds) {
+      state.isImageDisplayedInFullQuality
+    }
+    rule.runOnIdle {
+      dropshots.assertSnapshot(rule.activity, testName.methodName + "_[after]")
+    }
   }
 
   @Test fun various_image_sizes_and_alignments(
@@ -1952,8 +2000,11 @@ internal fun ZoomableImageSource.Companion.asset(assetName: String, subSample: B
 }
 
 @Composable
-internal fun ZoomableImageSource.Companion.subSampledAssetWithPreview(assetName: String): ZoomableImageSource {
-  return remember(assetName) {
+internal fun ZoomableImageSource.Companion.subSampledAssetWithPreview(
+  assetName: String,
+  previewAssetName: String = assetName,
+): ZoomableImageSource {
+  return remember(assetName, previewAssetName) {
     object : ZoomableImageSource {
       @Composable
       override fun resolve(canvasSize: Flow<Size>): ResolveResult {
@@ -1961,9 +2012,12 @@ internal fun ZoomableImageSource.Companion.subSampledAssetWithPreview(assetName:
         val assetBitmap = remember {
           context.assets.open(assetName).use(BitmapFactory::decodeStream)!!.asImageBitmap()
         }
+        val previewAssetBitmap = remember {
+          context.assets.open(previewAssetName).use(BitmapFactory::decodeStream)!!.asImageBitmap()
+        }
         return ResolveResult(
           delegate = ZoomableImageSource.SubSamplingDelegate(
-            SubSamplingImageSource.asset(assetName, preview = assetBitmap)
+            SubSamplingImageSource.asset(assetName, preview = previewAssetBitmap)
           ),
         )
       }
