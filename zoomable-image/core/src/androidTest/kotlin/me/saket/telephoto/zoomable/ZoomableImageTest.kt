@@ -2009,9 +2009,6 @@ internal fun ZoomableImageSource.Companion.subSampledAssetWithPreview(
       @Composable
       override fun resolve(canvasSize: Flow<Size>): ResolveResult {
         val context = LocalContext.current
-        val assetBitmap = remember {
-          context.assets.open(assetName).use(BitmapFactory::decodeStream)!!.asImageBitmap()
-        }
         val previewAssetBitmap = remember {
           context.assets.open(previewAssetName).use(BitmapFactory::decodeStream)!!.asImageBitmap()
         }
