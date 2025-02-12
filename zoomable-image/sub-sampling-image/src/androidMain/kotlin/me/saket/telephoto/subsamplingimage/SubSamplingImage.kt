@@ -81,7 +81,7 @@ fun SubSamplingImage(
       .contentDescription(contentDescription)
       .drawBehind(onDraw)
       .onSizeChanged { state.viewportSize = it }
-      .wrapContentSizeIfNeeded(state.imageSize)
+      .wrapContentSizeIfNeeded(state.imageOrPreviewSize)
       .semantics {
         this.imageSemanticState = SubSamplingImageSemanticState(
           isImageDisplayed = state.isImageDisplayed,

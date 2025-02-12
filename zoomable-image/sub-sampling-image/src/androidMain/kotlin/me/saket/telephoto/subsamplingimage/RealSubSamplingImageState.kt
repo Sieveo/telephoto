@@ -48,11 +48,14 @@ internal class RealSubSamplingImageState(
 ) : SubSamplingImageState {
 
   override val imageSize: IntSize?
-    get() = imageRegionDecoder?.imageSize ?: imageSource.preview?.size()
+    get() = imageRegionDecoder?.imageSize
 
   // todo: it isn't great that the preview image remains in memory even after the full image is loaded.
   private val imagePreview: Painter? =
     imageSource.preview?.let(::BitmapPainter)
+
+  internal val imageOrPreviewSize: IntSize?
+    get() = imageSize ?: imageSource.preview?.size()
 
   override val isImageDisplayed: Boolean by derivedStateOf {
     isReadyToBeDisplayed && viewportImageTiles.isNotEmpty() &&
@@ -88,9 +91,7 @@ internal class RealSubSamplingImageState(
   }
 
   private val isReadyToBeDisplayed: Boolean by derivedStateOf {
-    val viewportSize = viewportSize
-    val imageSize = imageSize
-    viewportSize?.isNotEmpty() == true && imageSize?.isNotEmpty() == true
+    viewportSize?.isNotEmpty() == true && imageOrPreviewSize?.isNotEmpty() == true
   }
 
   // Note to self: This is not inlined in viewportTiles to
@@ -99,7 +100,7 @@ internal class RealSubSamplingImageState(
     if (isReadyToBeDisplayed) {
       ImageRegionTileGrid.generate(
         viewportSize = viewportSize!!,
-        unscaledImageSize = imageSize!!,
+        unscaledImageSize = imageOrPreviewSize!!,
       )
     } else null
   }
