@@ -162,6 +162,34 @@ class ZoomablePeekOverlayTest {
     dropshots.assertSnapshot(rule.activity.takePixelCopyScreenshot(), testName.methodName + "_[after_zoom]")
   }
 
+  @Test fun brush_overlay_decoration() = runTest {
+    lateinit var state: ZoomablePeekOverlayState
+    rule.setContent {
+      Box(Modifier.fillMaxSize(), Alignment.Center) {
+        state = rememberZoomablePeekOverlayState()
+        val overlayDecoration = ZoomablePeekOverlayDecoration.scrim(
+          Brush.horizontalGradient(listOf(Color(0xFF2be4dc), Color(0xFF243484)))
+        )
+        Box(
+          Modifier
+            .size(100.dp)
+            .zoomablePeekOverlay(state, overlayDecoration)
+            .background(Color.Yellow)
+            .testTag("content")
+        )
+      }
+    }
+
+    rule.onNodeWithTag("content").performTouchInput {
+      val noUpScope = object : TouchInjectionScope by this {
+        override fun up(pointerId: Int) = Unit
+      }
+      noUpScope.pinchToZoomInBy(IntOffset(5, 5))
+    }
+    rule.waitForIdle()
+    dropshots.assertSnapshot(rule.activity.takePixelCopyScreenshot())
+  }
+
   @OptIn(ExperimentalFoundationApi::class)
   @Test fun content_does_not_intercept_click_events() {
     var onClickCount = 0
