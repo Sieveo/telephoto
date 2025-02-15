@@ -87,7 +87,8 @@ sealed interface ZoomableState {
   val transformedContentBounds: Rect
 
   /**
-   * The content's current zoom as a fraction of its min and max allowed zoom factors.
+   * The content's current zoom as a fraction of its min and max allowed zoom limits.
+   * Also see: [ZoomableContentTransformation.scale] and [ZoomableContentTransformation.scaleMetadata].
    *
    * @return A value between 0 and 1, where 0 indicates that the content is fully zoomed out,
    * 1 indicates that the content is fully zoomed in, and `null` indicates that an initial zoom
