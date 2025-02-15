@@ -669,8 +669,17 @@ internal class RealZoomableState internal constructor(
     internal val Saver = Saver(
       save = { state ->
         state.currentGestureStateInputs?.let { inputs ->
+          val gestureState = state.gestureState.calculate(inputs).let { gestureState ->
+            // Touch events are canceled on state restoration.
+            // If the content is over-zoomed, snap back to its zoom limits.
+            gestureState.copy(
+              userZoom = ContentZoomFactor(inputs.baseZoom, gestureState.userZoom)
+                .coerceUserZoomIn(state.zoomSpec.range)
+                .userZoom
+            )
+          }
           ZoomableSavedState.from(
-            gestureState = state.gestureState.calculate(inputs),
+            gestureState = gestureState,
             gestureStateInputs = inputs,
           )
         }

@@ -6,6 +6,7 @@ import android.view.PixelCopy
 import android.view.ViewConfiguration
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,12 +50,14 @@ import androidx.compose.ui.viewinterop.AndroidView
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
+import assertk.assertions.isGreaterThan
 import assertk.assertions.isTrue
 import com.dropbox.dropshots.Dropshots
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.test.runTest
 import leakcanary.LeakAssertions
+import me.saket.telephoto.util.ActivityRecreationTester
 import me.saket.telephoto.util.CiScreenshotValidator
 import me.saket.telephoto.util.ScreenshotTestActivity
 import org.junit.After
@@ -399,6 +402,41 @@ class ZoomablePeekOverlayTest {
       assertThat(state.isZoomedIn).isFalse()
     }
     dropshots.assertSnapshot(rule.activity.takePixelCopyScreenshot(), testName.methodName + "_[during_zoom]")
+  }
+
+  @Test fun do_not_restore_state_with_out_of_bounds_zoom() {
+    lateinit var state: ZoomablePeekOverlayState
+    val recreationTester = ActivityRecreationTester(rule)
+
+    recreationTester.setContent {
+      Box(Modifier.fillMaxSize(), Alignment.Center) {
+        state = rememberZoomablePeekOverlayState()
+        Box(
+          Modifier
+            .size(200.dp)
+            .border(1.dp, Color.Blue)
+            .zoomablePeekOverlay(state)
+            .background(Color.Yellow)
+            .testTag("content")
+        )
+      }
+    }
+
+    rule.onNodeWithTag("content").performTouchInput {
+      val noUpScope = object : TouchInjectionScope by this {
+        override fun up(pointerId: Int) = Unit
+      }
+      noUpScope.pinchToZoomInBy(IntOffset(5, 5))
+    }
+    rule.runOnIdle {
+      assertThat(state.zoomableState.contentTransformation.scaleMetadata.userZoom).isGreaterThan(1f)
+    }
+
+    recreationTester.recreate()
+
+    rule.runOnIdle {
+      assertThat(state.zoomableState.contentTransformation.scaleMetadata.userZoom).isEqualTo(1f)
+    }
   }
 }
 
