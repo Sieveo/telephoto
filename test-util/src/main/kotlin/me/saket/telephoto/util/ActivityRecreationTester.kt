@@ -1,4 +1,4 @@
-package me.saket.telephoto.zoomable
+package me.saket.telephoto.util
 
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable

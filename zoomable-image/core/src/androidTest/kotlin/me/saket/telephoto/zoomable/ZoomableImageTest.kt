@@ -105,6 +105,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import leakcanary.LeakAssertions
 import me.saket.telephoto.subsamplingimage.SubSamplingImageSource
+import me.saket.telephoto.util.ActivityRecreationTester
 import me.saket.telephoto.util.CiScreenshotValidator
 import me.saket.telephoto.util.ScreenshotTestActivity
 import me.saket.telephoto.util.waitUntil
