@@ -23,8 +23,8 @@ import androidx.compose.ui.layout.onPlaced
 import kotlinx.coroutines.flow.collectLatest
 
 /**
- * Adds a short-lived, overlaid zoom effect reminiscent of Instagram's "peek" feature.
- * The content zooms in while the user interacts with it and, unlike [Modifier.zoomable][me.saket.telephoto.zoomable],
+ * Adds a short-lived, overlaid zoom effect inspired by Instagram. The content zooms in
+ * while the user interacts with it and, unlike [Modifier.zoomable][me.saket.telephoto.zoomable],
  * automatically returns to its normal state once the gesture is released.
  */
 fun Modifier.zoomablePeekOverlay(
