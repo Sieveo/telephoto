@@ -36,7 +36,7 @@ internal class RealZoomablePeekOverlayState(
 ) : ZoomablePeekOverlayState {
 
   var coordinates: LayoutCoordinates? by mutableStateOf(null, neverEqualPolicy())
-  lateinit var overlayDecoration: ZoomablePeekOverlayDecoration
+  lateinit var backdrop: ZoomablePeekOverlayBackdrop
 
   override val isZoomedIn: Boolean by derivedStateOf {
     zoomableState.contentTransformation.scaleMetadata.userZoom > 1f
@@ -54,7 +54,7 @@ internal class RealZoomablePeekOverlayState(
         }
 
         boundsInWindow?.let { boundsInWindow ->
-          overlayDecoration.Decorate(state = this@RealZoomablePeekOverlayState)
+          backdrop.Backdrop(state = this@RealZoomablePeekOverlayState)
 
           Canvas(
             Modifier

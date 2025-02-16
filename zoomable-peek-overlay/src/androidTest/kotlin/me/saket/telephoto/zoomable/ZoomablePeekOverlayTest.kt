@@ -127,7 +127,7 @@ class ZoomablePeekOverlayTest {
     lateinit var state: ZoomablePeekOverlayState
     rule.setContent {
       Box(Modifier.fillMaxSize(), Alignment.Center) {
-        val overlayDecoration = ZoomablePeekOverlayDecoration {
+        val overlayDecoration = ZoomablePeekOverlayBackdrop {
           Box(
             Modifier
               .fillMaxSize()
@@ -170,7 +170,7 @@ class ZoomablePeekOverlayTest {
     rule.setContent {
       Box(Modifier.fillMaxSize(), Alignment.Center) {
         state = rememberZoomablePeekOverlayState()
-        val overlayDecoration = ZoomablePeekOverlayDecoration.scrim(
+        val overlayDecoration = ZoomablePeekOverlayBackdrop.scrim(
           Brush.horizontalGradient(listOf(Color(0xFF2be4dc), Color(0xFF243484)))
         )
         Box(

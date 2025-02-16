@@ -29,10 +29,10 @@ import kotlinx.coroutines.flow.collectLatest
  */
 fun Modifier.zoomablePeekOverlay(
   state: ZoomablePeekOverlayState,
-  overlayDecoration: ZoomablePeekOverlayDecoration = ZoomablePeekOverlayDecoration.scrim(),
+  backdrop: ZoomablePeekOverlayBackdrop = ZoomablePeekOverlayBackdrop.scrim(),
 ): Modifier {
   check(state is RealZoomablePeekOverlayState)
-  state.overlayDecoration = overlayDecoration
+  state.backdrop = backdrop
   if (state.graphicsLayer == null) {
     return this
   }
@@ -57,9 +57,9 @@ fun Modifier.zoomablePeekOverlay(
 }
 
 @Stable
-fun interface ZoomablePeekOverlayDecoration {
+fun interface ZoomablePeekOverlayBackdrop {
   /**
-   * Draws decoration *behind* the zoomed content where [Modifier.zoomablePeekOverlay] is used.
+   * Draws a backdrop *behind* the zoomed content where [Modifier.zoomablePeekOverlay] is used.
    *
    * Keep in mind that this can't be used to control the appearance of the zoomable content itself.
    * To do so, apply effects directly to the content instead:
@@ -76,28 +76,28 @@ fun interface ZoomablePeekOverlayDecoration {
    * ```
    */
   @Composable
-  fun Decorate(state: ZoomablePeekOverlayState)
+  fun Backdrop(state: ZoomablePeekOverlayState)
 
   companion object {
     /** Draws a scrim behind the zoomed content. */
     @Stable
     fun scrim(
       color: Color = Color.Black.copy(alpha = 0.4f)
-    ): ZoomablePeekOverlayDecoration = scrim(SolidColor(color))
+    ): ZoomablePeekOverlayBackdrop = scrim(SolidColor(color))
 
     /** Draws a scrim behind the zoomed content. */
     @Stable
     fun scrim(
       brush: Brush
-    ): ZoomablePeekOverlayDecoration = Scrim(brush)
+    ): ZoomablePeekOverlayBackdrop = Scrim(brush)
   }
 
   private data class Scrim(
     val brush: Brush,
-  ) : ZoomablePeekOverlayDecoration {
+  ) : ZoomablePeekOverlayBackdrop {
 
     @Composable
-    override fun Decorate(state: ZoomablePeekOverlayState) {
+    override fun Backdrop(state: ZoomablePeekOverlayState) {
       val animatedAlpha = remember { Animatable(initialValue = 0f) }
       LaunchedEffect(state) {
         snapshotFlow { state.zoomableState.isAnimationRunning }.collectLatest { isSettling ->

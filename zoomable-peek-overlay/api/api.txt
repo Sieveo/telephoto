@@ -1,17 +1,18 @@
 // Signature format: 4.0
 package me.saket.telephoto.zoomable {
 
-  @androidx.compose.runtime.Stable public fun interface ZoomablePeekOverlayDecoration {
-    method @androidx.compose.runtime.Composable public void Decorate(me.saket.telephoto.zoomable.ZoomablePeekOverlayState state, kotlin.jvm.functions.Function0<kotlin.Unit> innerContent);
-    field public static final me.saket.telephoto.zoomable.ZoomablePeekOverlayDecoration.Companion Companion;
+  @androidx.compose.runtime.Stable public fun interface ZoomablePeekOverlayBackdrop {
+    method @androidx.compose.runtime.Composable public void Backdrop(me.saket.telephoto.zoomable.ZoomablePeekOverlayState state);
+    field public static final me.saket.telephoto.zoomable.ZoomablePeekOverlayBackdrop.Companion Companion;
   }
 
-  public static final class ZoomablePeekOverlayDecoration.Companion {
-    method @androidx.compose.runtime.Stable public me.saket.telephoto.zoomable.ZoomablePeekOverlayDecoration scrim(optional long color);
+  public static final class ZoomablePeekOverlayBackdrop.Companion {
+    method @androidx.compose.runtime.Stable public me.saket.telephoto.zoomable.ZoomablePeekOverlayBackdrop scrim(androidx.compose.ui.graphics.Brush brush);
+    method @androidx.compose.runtime.Stable public me.saket.telephoto.zoomable.ZoomablePeekOverlayBackdrop scrim(optional long color);
   }
 
   public final class ZoomablePeekOverlayKt {
-    method public static androidx.compose.ui.Modifier zoomablePeekOverlay(androidx.compose.ui.Modifier, me.saket.telephoto.zoomable.ZoomablePeekOverlayState state, optional me.saket.telephoto.zoomable.ZoomablePeekOverlayDecoration overlayDecoration);
+    method public static androidx.compose.ui.Modifier zoomablePeekOverlay(androidx.compose.ui.Modifier, me.saket.telephoto.zoomable.ZoomablePeekOverlayState state, optional me.saket.telephoto.zoomable.ZoomablePeekOverlayBackdrop backdrop);
   }
 
   @androidx.compose.runtime.Stable public sealed interface ZoomablePeekOverlayState {
