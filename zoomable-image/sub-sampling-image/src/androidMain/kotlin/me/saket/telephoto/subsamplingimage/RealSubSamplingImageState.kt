@@ -10,6 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
@@ -161,10 +162,12 @@ internal class RealSubSamplingImageState(
       ImageCache(scope, imageRegionDecoder)
     }
 
-    LaunchedEffect(imageCache, viewportTiles) {
-      imageCache.loadOrUnloadForTiles(
-        regions = viewportTiles.fastMapNotNull { if (it.isVisible) it.region else null }
-      )
+    LaunchedEffect(imageCache) {
+      snapshotFlow { viewportTiles }.collect { tiles ->
+        imageCache.loadOrUnloadForTiles(
+          regions = tiles.fastMapNotNull { if (it.isVisible) it.region else null }
+        )
+      }
     }
     LaunchedEffect(imageCache) {
       imageCache.observeCachedImages().collect {
