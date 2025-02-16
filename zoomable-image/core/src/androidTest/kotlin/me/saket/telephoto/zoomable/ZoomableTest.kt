@@ -213,6 +213,44 @@ class ZoomableTest {
     }
   }
 
+  @Test fun double_tap_still_works_when_gestures_are_toggled() {
+    lateinit var state: ZoomableState
+    var gesturesEnabled by mutableStateOf(false)
+
+    rule.setContent {
+      state = rememberZoomableState(
+        zoomSpec = ZoomSpec(maxZoomFactor = 2f)
+      )
+      Box(
+        Modifier
+          .fillMaxSize()
+          .zoomable(state, enabled = gesturesEnabled)
+          .testTag("content")
+      )
+    }
+
+    rule.runOnIdle {
+      assertThat(state.zoomFraction!!).isEqualTo(0f)
+    }
+
+    rule.onNodeWithTag("content").performTouchInput { doubleClick() }
+    rule.runOnIdle {
+      assertThat(state.zoomFraction!!).isEqualTo(0f)
+    }
+
+    gesturesEnabled = true
+    rule.onNodeWithTag("content").performTouchInput { doubleClick() }
+    rule.runOnIdle {
+      assertThat(state.zoomFraction!!).isEqualTo(1f)
+    }
+
+    gesturesEnabled = false
+    rule.onNodeWithTag("content").performTouchInput { doubleClick() }
+    rule.runOnIdle {
+      assertThat(state.zoomFraction!!).isEqualTo(1f)
+    }
+  }
+
   @Test fun zoomable_state_can_be_updated() {
     var key by mutableStateOf("a")
     lateinit var lastZoomableState: ZoomableState
