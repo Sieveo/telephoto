@@ -150,6 +150,7 @@ internal class TappableAndQuickZoomableNode(
     val needsReset = (this.onTap == null) != (onTap == null) ||
       (this.onLongPress == null) != (onLongPress == null) ||
       (this.onDoubleTap == null) != (onDoubleTap == null) ||
+      (this.quickZoomEnabled != quickZoomEnabled) ||
       (this.transformableState != transformableState)
 
     // These are captured as references inside callbacks to detectTapAndQuickZoomGestures,
