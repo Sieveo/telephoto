@@ -67,7 +67,7 @@ plugins:
 
 extra:
   versions:
-    telephoto: '0.14.0' # Env var for the latest version on maven.
+    telephoto: '0.15.0' # Env var for the latest version on maven.
 
 nav:
   - 'Overview': index.md
@@ -79,3 +79,4 @@ nav:
   - 'Modifier.zoomable()':
       - 'Overview': zoomable/index.md
       - 'Recipes': zoomable/recipes.md
+  - 'Modifier.zoomablePeekOverlay()': zoomable-peek-overlay/index.md

@@ -18,3 +18,6 @@ _Drop-in_ replacement for `Image()` composables featuring support for pan & zoom
 
 ### [Modifier.zoomable()](zoomable/index.md)
 `ZoomableImage`'s gesture detector, packaged as a standalone `Modifier` that can be used with non-image composables.
+
+### [Modifier.zoomablePeekOverlay()](zoomable-peek-overlay/index.md)
+Transient, overlaid zoom effect inspired by Instagram.
