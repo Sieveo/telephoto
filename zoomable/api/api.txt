@@ -90,8 +90,10 @@ package me.saket.telephoto.zoomable {
   }
 
   public static final class OverzoomEffect.Companion {
+    method public me.saket.telephoto.zoomable.OverzoomEffect getDisabled();
     method public me.saket.telephoto.zoomable.OverzoomEffect getNoLimits();
     method public me.saket.telephoto.zoomable.OverzoomEffect getRubberBanding();
+    property public final me.saket.telephoto.zoomable.OverzoomEffect Disabled;
     property public final me.saket.telephoto.zoomable.OverzoomEffect NoLimits;
     property public final me.saket.telephoto.zoomable.OverzoomEffect RubberBanding;
   }
