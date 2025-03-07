@@ -20,7 +20,7 @@ idna==3.10
     # via
     #   -r mkdocs_requirements.in
     #   requests
-jinja2==3.1.4
+jinja2==3.1.6
     # via
     #   -r mkdocs_requirements.in
     #   mkdocs
